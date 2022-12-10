@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="ja">
+  <head>
+    <meta http-equiv="content-type" content="text/html;charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>LogData admin</title>
+
+
+    <script type="module" src="./bundle.js"></script>
+    <script src="./common.js"></script>
+    <script src="./adminlog.js"></script>
+    <!-- <script defer src="/__/firebase/init.js?useEmulator=true"></script> -->
+
+    <!-- <link rel="stylesheet" href="./index.css"> -->
+    
+  </head>
+  <body>
+    
+    <h3>Log管理</h3>
+    
+    <input type="date" id="date_limit" required pattern="\d{4}/\d{2}/\d{2}" disabled>
+    <input type="button" value="確認" id="button_datelimit_reflecter" disabled>
+
+    
+    
+    <div id="div_infoTable"></div>
+    
+    
+    <span id="span_UserInfo"></span>
+    <span id="disableRecordLog"></span>
+  </body>
+</html>

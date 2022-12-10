@@ -1,6 +1,29 @@
 {
   "rules": {
-    ".read": false,
-    ".write": false
+        ".read": "auth != null && auth.email_verified === true && root.child('adminusers').child(auth.uid).val()===true",
+        ".write": "auth != null && auth.email_verified === true && root.child('adminusers').child(auth.uid).val()===true"
+    
+    ,"adminusers": {
+        ".read": false,
+        ".write": false,
+    }
+    
+    ,"logs": {
+       "$uid": {
+              ".read":  "auth != null && auth.uid == $uid"
+           ,"$key":{
+              ".write": "auth != null && auth.uid == $uid && !data.exists()"
+           }
+       }
+    }
+    
+    ,"connections": {
+       ".read": "auth != null "
+       ,"$uid": {
+            ".write": "auth != null && auth.uid == $uid"
+       }
+    }
+    
+    
   }
 }

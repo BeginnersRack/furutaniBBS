@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Storage test</title>
+
+    <script type="text/javascript">
+        function getSessionStorage(){
+            return sessionStorage.getItem('testdata');
+        }
+        function setSessionStorage(msg){
+            sessionStorage.setItem('testdata',msg);
+        }
+        function getLocalStorage(){
+            return localStorage.getItem('testdata');
+        }
+        function setLocalStorage(msg){
+            localStorage.setItem('testdata',msg);
+        }
+    </script>
+
+  </head>
+  <body>
+    <h1>MyAccount</h1>
+    
+    <div id="myAccount_infoTable"></div>
+    
+    
+    
+    
+    
+     <input type="button" value="LocalStorage値" onclick="alert(getLocalStorage())">
+     </br>
+     <input type="button" value="LocalStorage記入" onclick="let msg=prompt('=');setLocalStorage(msg);">
+     </br>
+     
+     </br>
+     
+     <input type="button" value="SessionStorage値" onclick="alert(getSessionStorage())">
+     </br>
+     <input type="button" value="SessionStorage記入" onclick="let msg=prompt('=');setSessionStorage(msg);">
+     </br>
+     
+
+     </br>
+     </br>
+     <a href="http://localhost:5000/test.html">thispage</a>
+     </br>
+     <span id="forTest"></span>
+  </body>
+</html>

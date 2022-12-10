@@ -5,16 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Welcome to Firebase Hosting</title>
 
-    <script defer src="/__/firebase/init.js?useEmulator=true"></script>
+    <!-- <script defer src="/__/firebase/init.js?useEmulator=true"></script> -->
     <script type="module" src="./bundle.js"></script>
-    <script type="module" src="./index.js"></script>
+    <script src="./common.js"></script>
+    <script src="./index.js"></script>
+    <script src="./index_m.js" type="module" ></script> <!-- forTest -->
 
+    <!-- <link rel="stylesheet" href="./index.css"> -->
+    
   </head>
   <body>
     
     
     <div id="my_auth"></div>
-        <input type="button" value="check" onclick="buttonAuthCheck_Click()">
     
+    
+    <iframe id="iframe_main" onload="func_iframe_main_onload()"></iframe>
+    
+    <a><span id="span_ConnectionMembersCount"></span></a>
   </body>
 </html>

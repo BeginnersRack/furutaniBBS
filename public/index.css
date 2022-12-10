@@ -1,0 +1,9 @@
+body {
+  margin: 0;
+}
+iframe {
+  width: 100%;
+  border: none;
+}
+#iframe_main {
+}
