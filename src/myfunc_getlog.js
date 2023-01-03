@@ -86,6 +86,8 @@ async function createAccessLogData(myuser , strLogMsg0 , connectionLogFlg=0 ,ses
     let strLogMsg = strLogMsg0;
     let snum=getMySessionNumber();
     if(snum) strLogMsg += "("+snum+")";
+    
+    if(!myuser) myuser=getUserForLog();
 
     if(flg_disableRecordLog){  myconsolelog(`[Log] ${strLogMsg0}`); return; }
     
@@ -186,11 +188,15 @@ async function createAccessLogData(myuser , strLogMsg0 , connectionLogFlg=0 ,ses
           if(connectionLogFlg){if(([1,2,-2]).includes(connectionLogFlg)){if(connectionLogPath!=""){
               //if(1==2){
                 //if(Object.keys(getSessonIdList(-1)).length==1){ // ブラウザの残窓があと1つである場合
-                      const logConnectionsOutRef = firebaseRTDB_ref(firebaseRTDB_database , connectionLogPath+'logoff');
-                      logConnectionDisconnectEvent = firebaseRTDB_onDisconnect(logConnectionsOutRef);
-                      logConnectionDisconnectEvent.set(firebaseRTDB_serverTimestamp()).then( ()=>{ 
-                          myconsolelog(`[INFO]通信切断時のイベントを設定しました：${connectionLogPath}`);
-                      });
+                      if(logConnectionDisconnectEvent){
+                          myconsolelog(`[Warning] 通信切断時のイベントで重複登録が発生：${connectionLogPath}`);
+                      }else{
+                          const logConnectionsOutRef = firebaseRTDB_ref(firebaseRTDB_database , connectionLogPath+'logoff');
+                          logConnectionDisconnectEvent = firebaseRTDB_onDisconnect(logConnectionsOutRef);
+                          logConnectionDisconnectEvent.set(firebaseRTDB_serverTimestamp()).then( ()=>{ 
+                              myconsolelog(`[INFO]通信切断時のイベントを設定しました：${connectionLogPath}`);
+                          });
+                      }
                 //}
               //}
           }}}
@@ -314,11 +320,10 @@ function setConnectionMembersListListener(tgtHtmlElem){
                         ,function(snapshot){  // 第3引数：onValueイベント処理(resolve)
                             const dbdata = snapshot.val();
                             
+                            for(let key of Object.keys(ConnectionMembersList)){
+                                ConnectionMembersList[key].connect = false;
+                            }
                             if(dbdata){
-                                for(let key of Object.keys(ConnectionMembersList)){
-                                    ConnectionMembersList[key].connect = false;
-                                }
-                                
                                 let cnt=0;
                                 //cnt = Object.keys(dbdata).length;
                                 for(let key of Object.keys(dbdata)){
@@ -326,7 +331,7 @@ function setConnectionMembersListListener(tgtHtmlElem){
                                     let data = createConnectionMembersListData(elem);
                                     ConnectionMembersList[(elem.usercode ? elem.usercode : key)]=data;
                                     if(key==myuserid){ConnectionLogData_logmodeFlg = data.logmode;}
-                                    cnt++;
+                                    if(data.connect){cnt++;}
                                 }
                                 
                                 //for(let key of Object.keys(ConnectionMembersList)){
@@ -403,7 +408,9 @@ function getRTDBdatas(mode,dbpath,callback,cancelCallback0=null,queryObj=null){
     if(typeof cancelCallback0=="function"){
         cancelCallback = cancelCallback0;
     }else{
-        cancelCallback =function(){};
+        cancelCallback =function(error){
+            myconsolelog(`[ERROR]： in getRTDBdatas(). ${error.code}:${error.message} ${error}`);
+        };
     }
     //------
     let DBDatasRef = firebaseRTDB_ref(firebaseRTDB_database , dbpath );
@@ -459,6 +466,7 @@ function getRTDBdatas(mode,dbpath,callback,cancelCallback0=null,queryObj=null){
         
     }
     
+    console.log("*"+mode+"*"+ (DBDatasRef._path.pieces_).join(",") );
     let onlyOnceFlg=false;
     switch (mode){
       case "get":
@@ -471,8 +479,7 @@ function getRTDBdatas(mode,dbpath,callback,cancelCallback0=null,queryObj=null){
       case "once":
           onlyOnceFlg=true;
       case "on":
-          //DBDatasRef.off();
-          //console.log("*"+mode+" "+ (DBDatasRef._path.pieces_).join(",") );
+          if(typeof DBDatasRef.off=="function")DBDatasRef.off();
           firebaseRTDB_onValue(DBDatasRef, function(snapshot){
               callback(snapshot);
           },function(error){

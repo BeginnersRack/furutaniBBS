@@ -1,8 +1,89 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if true;
+  
+          function isAuthenticated() { // 条件 1
+              return request.auth != null && request.auth.token.email_verified == true;
+          }
+          //function isUserAuthenticated(userId) { // 条件 1 かつ 条件 2
+          //    return isAuthenticated() && userId == request.auth.uid;
+          //}
+              // ユーザー情報の取得のルール    allow get: if isUserAuthenticated(userId);
+         
+         
+          function isEmail(strData) { // 条件 1
+              return (strData is string && strData.matches('^[A-Za-z0-9.$+%]{3,}[@]{1}[A-Za-z0-9]{3,}[.]{1}[A-Za-z0-9]{3,}$'));
+          }
+          function isListOfEmail(aryData) { // 条件 1
+              return aryData is list;
+          }
+
+    // ----------- スレッド名リストデータのルール ------------------
+    function isThreadList(data) {
+        return data.keys().hasOnly(['sort','title','threadtype','created','modified','ownername','ownerids','overview'])
+        && data.sort is string
+        && data.sort.size() <= 100
+        && data.title is string
+        && data.threadtype is string
+        && data.created is timestamp
+        && data.modified is timestamp
+        && data.ownername is string
+        && data.ownerids is list
+        && data.overview is string
+        ;
     }
+    function isThreadListUpdatable(newData,orgData) {
+        return isThreadList(newData)
+        && newData.created == orgData.created
+        && ( (if !(orgData.keys().hasAll(['ownerids']))) || orgData.ownerids.hasAll([request.auth.token.email]));
+        ;
+    }
+    function isThreadListDeletable(newData,orgData) {
+        return isThreadList(newData)
+        && newData.created == orgData.created
+        && ( (if (orgData.keys().hasAll(['ownerids']))) && orgData.ownerids.hasAll([request.auth.token.email]));
+        ;
+    }
+      // ----------- スレッド内容データのルール ------------------
+    function isThreadConfig(data) {
+        return data.keys().hasOnly(['ownerids','type','modified','voteflg','sort','details'])
+        && data.ownerids is list
+        && data.modified is timestamp
+        
+        && data.type is number
+        && ([0,1]).hasAll([data.type])
+        && data.voteflg is number
+        && data.voteflg >=0 && data.voteflg <=3
+        && data.sort is string
+        && data.sort.size() <= 100
+        && data.details is string
+        ;
+    }
+    function isThreadConfigUpdatable(newData,orgData) {
+        return isThreadConfig(newData)
+        && orgData.ownerids.hasAll([request.auth.token.email]);
+        ;
+    }
+
+
+    // ======================================================================
+    match /BulletinBoardList/{boardID}
+                allow read : @true;
+
+        match /threadList/{threadId} {   //  スレッド名リスト
+                allow read : if isAuthenticated();
+                allow create: if isAuthenticated() && isThreadList(request.resource.data);
+                allow update: if isAuthenticated() && isThreadListUpdatable(request.resource.data,resource.data) ;
+                allow delete: if isAuthenticated() && isThreadListDeletable(request.resource.data,resource.data) ;
+
+            match /threadConfig/{id} {    //  スレッド内容データ
+                allow read : if isAuthenticated();
+                allow create: if isAuthenticated() && isThreadConfig(request.resource.data);
+                allow update: if isAuthenticated() && isThreadConfigUpdatable(request.resource.data,resource.data) ;
+            }
+
+        }
+    }
+    // ======================================================================
   }
 }

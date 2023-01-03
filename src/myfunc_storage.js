@@ -1,7 +1,7 @@
 // import "./my_authentication.js";
 import {getServerTimeFromRTDB} from "./myfunc_getlog.js";
 import {myDateTimeFormat} from "./myfunc_common.js";
-
+import { myconsolelog } from "./myfunc_common.js";
 
 let g_session_id="";
 let g_session_num=-1;
@@ -49,23 +49,26 @@ function setSessionID(strId){
 //  localStorageにあるセッションリストを返す。同時に自分のデータを更新する
 function getSessonIdList(suppressOverwrite=-1){ // suppressOverwrite=0だと更新後のデータを返す。1だと更新前を返す。-1だと更新しない。
     let strData = localStorage.getItem('sessionids');
-    let objData ={};
+    let objData1 ={};
     try {
-        objData = JSON.parse(strData);
+        objData1 = JSON.parse(strData);
     }catch(error){
         myconsolelog(`[error] Can not getSessonIdList! (${error.code}:${error.message})`);
-        objData ={};
+        objData1 ={};
     }
-    if(!objData)objData={};
+    if(!objData1)objData1={};
+  
+    let objData2 ={};
     if(suppressOverwrite>=0){
-       if(suppressOverwrite==0){
-           objData = updateSessonIdList(objData);
-       }else{
-           updateSessonIdList(objData);
-       }
+        objData2 = updateSessonIdList(objData1);
+        if(!objData2)objData2={};
     }
-    if(!objData)objData={};
-    return objData;
+    
+    if(suppressOverwrite==0){
+           return objData2;
+    }else{
+           return objData1;
+    }
 }
 function updateSessonIdList(objData0=null , deleteid=null){
     let objData = objData0;
@@ -81,6 +84,7 @@ function updateSessonIdList(objData0=null , deleteid=null){
     if(!mydata){  // 初期値生成
         if(deleteid!=sid){
             g_session_num = getNewSessionNumber();
+            myconsolelog(`[info] your sessionNumber = ${g_session_num}.`);
             mydata= {   sessionnumber: g_session_num
                       , starttime   : nowtime
                       , starttimestr: myDateTimeFormat(nowtime)

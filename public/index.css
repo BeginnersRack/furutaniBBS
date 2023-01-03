@@ -1,9 +1,17 @@
+html {
+  height:100%;
+}
 body {
-  margin: 0;
+  margin: 3px; width: 99%; height:99%;
 }
-iframe {
+#my_auth {
+  max-height:50px;
+}
+#my_auth p {
+  margin:1px;
+}
+#iframe_main{
   width: 100%;
+  height:calc(100% - 50px);
   border: none;
-}
-#iframe_main {
 }

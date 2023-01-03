@@ -5,26 +5,86 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Page Not Found</title>
 
-
+<script>
+  //# sourceURL=myCode_head.js
+let videoflg=1;
+let videoMuted=1;
+let timeoutID=null;
+window.addEventListener('load', myonload);
+function myonload(){
+    document.body.addEventListener('click', startplayByClick);
+    timeoutID = setTimeout(myAutoplay,3000);
+    console.log("set autoplay event.");
+    
+    let pwin=window.parent;
+    if(pwin){
+       let myfnc=pwin.fb_getDataFromFirestoreDb;
+       if(typeof myfnc=="function"){
+          let btnelem=`<input type="button" id="button_home" value="Home" onclick="window.parent.fb_getDataFromFirestoreDb('home');" />`;
+          let tgtelem = document.getElementById("btn_home");
+          if(tgtelem){
+              tgtelem.insertAdjacentHTML('beforeend', btnelem);
+          }
+       }
+    }
+}
+function myAutoplay(){
+    tgt=document.getElementById("404movie");
+    if(tgt){
+        console.log("try autostart")
+        tgt.muted=true;
+        startplay();
+    }
+}
+function clearAutoplay(){
+    if(timeoutID){
+        clearTimeout(timeoutID);
+        timeoutID=0;
+        console.log("clear autoplay event.");
+    }else{
+        console.log("autoplay event already cleared.");
+    }
+}
+function startplayByClick(){
+    tgt=document.getElementById("404movie");
+    if(tgt){
+        if(videoMuted){
+            if(tgt.muted){
+                videoMuted=0;
+                if(tgt.volume==0){
+                    tgt.volume=0.02;
+                }
+                tgt.muted=false;
+            }
+        }
+    }
+    startplay();
+}
+function startplay(event=""){
+    clearAutoplay();
+    console.log("try start."+videoflg+" : "+event);
+    tgt=document.getElementById("404movie");
+    if(tgt){
+        if(videoflg){
+            tgt.play().then(function(){
+                    videoflg=0;
+            }).catch(function(err){
+                    console.log("error : "+err);
+            });
+        }
+    }
+}
+</script>
   </head>
   <body>
     <div id="message">
-      <h2>404</h2>
+      <table width=100%><tr>
+      <td>  <h2>404</h2>  </td><td style="text-align:right;">  <span id="btn_home"></span>  </td>
+      </tr></table>
       <h1>Page Not Found</h1>
 
     <div id="movie">
-        <iframe width="560" height="315" 
-        src="https://www.youtube.com/embed/6pw5lCzWmGo?autoplay=1&fs=0&rel=0&modestbranding=1&iv_load_policy=3&showinfo=0&mute=1" 
-        title="YouTube video player" frameborder="0" 
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; 
-        gyroscope; picture-in-picture" allowfullscreen>
-        </iframe>
-        <iframe width="560" height="315" 
-        src="https://www.youtube.com/embed/6pw5lCzWmGo?autoplay=1&fs=0&rel=0&modestbranding=1&iv_load_policy=3&showinfo=0" 
-        title="YouTube video player" frameborder="0" 
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; 
-        gyroscope; picture-in-picture" allowfullscreen>
-        </iframe>
+        <video id="404movie" src="https://cdn.glitch.global/3c2be260-fb8d-4bb8-b259-7e67c1d23f3e/404.mp4?v=1671872045481" width="640" playsinline controls onloadstart="this.volume=0.02;" onplay="clearAutoplay();"></video>
     </div>
 
       <p>The specified file was not found on this website. Please check the URL for mistakes and try again.</p>

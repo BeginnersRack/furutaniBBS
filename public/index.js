@@ -2,8 +2,23 @@
 
 window.addEventListener("load", function(event) {
     setConnectionMembersCountListener();
+    
+    
+    firstpage();
+    
 });
-
+function firstpage(){
+    let loginUser;
+    try{
+        loginUser = fb_getLoginUser(1);
+    }catch(err){
+        setTimeout( firstpage , 500 );
+        return;
+    };
+    
+    window.changeIframeTarget_main('home');
+    
+}
 
 
 //***********  認証確認 ***************
@@ -18,6 +33,9 @@ function fb_onAuthStateChanged_callback(){
     if(tgtPreElem){  //  名前表示の後ろにボタンを追加。
         createHtmlElement_button("MyAccountを開く","changeIframeTarget_main('myAccount')",tgtElemId,2);
     }
+    
+    //window.changeIframeTarget_main('home');
+    
 }
 
 //***********  離脱時の処理 ***************
@@ -68,7 +86,7 @@ window.addEventListener( ('onpagehide' in self ? 'pagehide' : 'unload') , functi
 //***********  iframeの内容を切り替えする ***************
 let str_IframeTarget_main_name="";
 
-function changeIframeTarget_main(caseflg){  
+function changeIframeTarget_main(caseflg , optionAry0={} ,rndflg=false){  
 
     let tgtPreElem = document.getElementById("iframe_main");
     if(!tgtPreElem){return 0;}
@@ -99,9 +117,24 @@ function changeIframeTarget_main(caseflg){
         console.log(`[404]iframe url = ${caseflg}`);
     }else{
         if(tgturl!=""){
-            if( tgturl.indexOf('?')!=-1 ){tgturl+="&";}else{tgturl+="?";}
-            let dts = new Date();
-            tgturl += ("rnd=" + dts.getMilliseconds().toString(10) );
+            let optionAry = optionAry0;
+            if(!optionAry)optionAry={};
+            if(rndflg){
+                if(!("rnd" in optionAry)){
+                    let dts = new Date();
+                    optionAry["rnd"]=dts.getMilliseconds().toString(10);
+                }
+            }
+            
+            if(Object.keys(optionAry).length>0){
+                let strSep="?";
+                if( tgturl.indexOf('?')!=-1 ){strSep="&";}
+                for(let key in optionAry){
+                    tgturl += (strSep + key +"="+ optionAry[key] );
+                    strSep="&";
+                }
+            }
+            
         }
     }
     
@@ -207,7 +240,32 @@ function func_iframe_main_onload(){
             }}
         }
     }
+    
+    
 }
+
+
+
+//***********  URLオプションの取得 ***************
+function getUrloptions(strUrl){
+    let ans={};
+    if(!strUrl)strUrl=window.location.href; // or location.search
+    
+    let ary1 = strUrl.split("?");
+    let strOpts = ary1[ary1.length-1];
+    let ary2 = strOpts.split("&");
+    for(let str1 of ary2){
+        let ary3 = str1.split("=");
+        if(ary3[0]){
+            ans[ary3[0]] = (ary3.length<=1)?"": decodeURIComponent( ary3.slice(-1)[0] );
+        }
+    }
+    return ans;
+    
+}
+
+
+
 
 
 //*********** アクセス者数の表示 *************

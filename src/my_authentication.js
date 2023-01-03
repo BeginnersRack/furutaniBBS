@@ -9,7 +9,7 @@ import { rtdatabase as firebaseRTDB_database ,rtdb_ref as firebaseRTDB_ref ,rtdb
 import { createAccessLogData  } from "./myfunc_getlog.js";
 import { getSessionID , setSessionID , getSessonIdList,getMySessionNumber } from "./myfunc_storage.js";
 import { myUuidCreate } from "./my_uuid.js";
-import "./myfunc_common.js";
+import { myconsolelog } from "./myfunc_common.js";
 
 
 const HtmlElement_myAuthDivId ="my_auth";
@@ -21,7 +21,15 @@ const str_signOutButton = `<button class="btn btn-primary" type="submit"  onClic
 const str_signInAnonymousButton = `<button class="btn btn-primary" type="submit"  onClick="fb_signInAnonymous()">匿名<\/button>`;
 
 
-const flg_disableRecordLog = document.getElementById("disableRecordLog"); //管理者画面などであれば、DOM上に設置しておく
+const flg_disableRecordLog = document.getElementById("disableRecordLog");
+   //DOM上にこれが設置されている場合はAccessLogを記録しない//管理者画面などであれば、DOM上に設置しておく
+
+
+
+// *************** onload *****************
+
+let flg_alreadySet_FBconnectedRefOnValueEvent=false;
+//setListenerOnChangeConnectedStatus(firebaseAuth.currentUser);
 
 //*********** my functions ****************
 
@@ -45,6 +53,7 @@ function updateLoginUser(user){
 
 
 firebase_onAuthStateChanged(firebaseAuth ,(user) => {  //認証状態が変化したときに呼び出される
+   myconsolelog(`[event] firebase_onAuthStateChanged ignition.`);
 
    setListenerOnChangeConnectedStatus(user);
 
@@ -103,59 +112,67 @@ firebase_onAuthStateChanged(firebaseAuth ,(user) => {  //認証状態が変化�
 
 
 // 接続(online化)時 処理 (アクセスログ保存)
-
-function setListenerOnChangeConnectedStatus(user){ //認証状態が変化したときに呼び出される
+function setListenerOnChangeConnectedStatus(user){ 
     
-    if (user) {
-      const connectedRef = firebaseRTDB_ref(firebaseRTDB_database , '.info/connected');  // Firebase定数 //
-      firebaseRTDB_onValue(connectedRef, (snap) => { //接続状態が変化したときに呼び出される
-        if (snap.val() === true) {
-          // We're connected (or reconnected)! Do anything here that should happen only if online (or on reconnect)
-          
-          let ssidCreateFlg=0;
-          let ssid = getSessionID(1); //sessionStorageのデータを取得
-          if(!ssid){
-              ssid=myUuidCreate();
-              setSessionID(ssid);
-              ssidCreateFlg=1; //New!!
-          }
-          
-          let sessionList = getSessonIdList(1); //localStorageから取得：自分のIDが無ければ登録する。但し返値は登録前のデータを返す
-          
-          let logmsg="";
-          let connectionLogFlg=0;
-          if(sessionList[ssid]){ 
-              if(ssidCreateFlg){ // 別ウインドウで新規に開かれたか
-                  connectionLogFlg=0; // 接続者情報は更新しない
-                  logmsg="sepalate-connect.";
-              }else{ // ブラウザのリロードがされたか
-                  connectionLogFlg=2; // 同時に 最新接続者情報も更新する(短時間更新であれば前回の情報を引き継ぐ)
-                  logmsg="re-connect.";
+    if(flg_alreadySet_FBconnectedRefOnValueEvent){
+          myconsolelog(`[Info] called:setListenerOnChangeConnectedStatus() : already set.`);
+    }else{
+        if (!user) {
+          myconsolelog(`[Info] called:setListenerOnChangeConnectedStatus() : no user defined.`);
+        }else{
+          myconsolelog(`[Info] called:setListenerOnChangeConnectedStatus() user=${ (user.uid)?user.uid:' ?' }`);
+          const connectedRef = firebaseRTDB_ref(firebaseRTDB_database , '.info/connected');  // Firebase定数 //
+          firebaseRTDB_onValue(connectedRef, (snap) => { //接続状態が変化したときに呼び出される
+            if (snap.val() === true) {
+              myconsolelog(`[event] firebase[info/connected]Flg changed.`);
+              // We're connected (or reconnected)! Do anything here that should happen only if online (or on reconnect)
+              
+              
+              let ssidCreateFlg=0;
+              let ssid = getSessionID(1); //sessionStorageのデータを取得
+              if(!ssid){
+                  ssid=myUuidCreate();
+                  setSessionID(ssid);
+                  ssidCreateFlg=1; //New!!
               }
-          }else{ // 自分はLocalStorageには未登録だった
-              //getSessonIdList(0); // localStorageのSessonIdListを更新
-              if(ssidCreateFlg){ // 完全に新規のアクセス開始か
-                  connectionLogFlg=1; // 同時に 最新接続者情報も更新する
-                  logmsg="connect.";
-              }else{  // データエラー localStorageのデータ破損か   長時間アクセス更新なしでtimeout扱い？
-                  connectionLogFlg=1; // 同時に 最新接続者情報も更新する
-                  logmsg="[INFO] データ不正：セッション継続なのにLocalStorageにデータが有りません。";
+              
+              let sessionList = getSessonIdList(1); //localStorageから取得：自分のIDが無ければ登録する。但し返値は登録前のデータを返す
+              
+              let logmsg="";
+              let connectionLogFlg=0;
+              if(sessionList[ssid]){ 
+                  if(ssidCreateFlg){ // 別ウインドウで新規に開かれたか
+                      connectionLogFlg=0; // 接続者情報は更新しない
+                      logmsg="sepalate-connect.";
+                  }else{ // ブラウザのリロードがされたか
+                      connectionLogFlg=2; // 同時に 最新接続者情報も更新する(短時間更新であれば前回の情報を引き継ぐ)
+                      logmsg="re-connect.";
+                  }
+              }else{ // 自分はLocalStorageには未登録だった
+                  //getSessonIdList(0); // localStorageのSessonIdListを更新
+                  if(ssidCreateFlg){ // 完全に新規のアクセス開始か
+                      connectionLogFlg=1; // 同時に 最新接続者情報も更新する
+                      logmsg="connect.";
+                  }else{  // データエラー localStorageのデータ破損か   長時間アクセス更新なしでtimeout扱い？
+                      connectionLogFlg=1; // 同時に 最新接続者情報も更新する
+                      logmsg="[INFO] データ不正：セッション継続なのにLocalStorageにデータが有りません。";
+                  }
               }
-          }
-          
-          const myuser = firebaseAuth.currentUser;
-          if(myuser) { 
-              if(flg_disableRecordLog){ myconsolelog(`[Log] ${logmsg}` ,-1); 
-              }else{
-                      createAccessLogData(myuser , logmsg , connectionLogFlg ); 
-          }   }
-          
-          
-          
+              
+              const myuser = firebaseAuth.currentUser;
+              if(myuser) { 
+                  if(flg_disableRecordLog){ myconsolelog(`[Log] ${logmsg}` ,-1); 
+                  }else{
+                          createAccessLogData(myuser , logmsg , connectionLogFlg ); 
+              }   }
+              
+              
+              
 
-          
+              
+            }
+          });
         }
-      });
     }
     
 }

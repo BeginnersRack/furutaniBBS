@@ -22,7 +22,7 @@ function myconsolelog(msg0,mode=0){ // mode  -1:console.logのみ   1:アクセ�
         
     }
     if(flg){
-        createAccessLogData( getUserForLog() , msg );
+        createAccessLogData( null , msg );
     }
 }
 
@@ -162,11 +162,55 @@ function myDateTimeFormat(orgvalue){
 }
 
 
+//******** sample ↓*********
+//let testtestAry={}
+//async function testwait(strKey="test",waitSec=5){
+//    let waitPromise = createPromise_waitDeleteKey(testtestAry,strKey,true,waitSec);
+//    console.log(`[Info] End処理を ${waitSec}秒間 待機しています・・・`);
+//    setTimeout( function(){delete testtestAry[strKey];} ,3000);
+//    if(await waitPromise.catch(function(strRejectInfo){
+//        console.log(`[Warning] 更新待機がtimeoutしました : ${strRejectInfo}`);
+//        return false;
+//    }) ){
+//        console.log(`[Info] 時間内にEndしました `);
+//    }
+//}
+//******** sample ↑*********
+function createPromise_waitDeleteKey(globalAry , key ,initializeFlg=true,maxSec=1,intervalms=100){
+  if(initializeFlg) globalAry[key]=true; // これが削除されるまで、最大(maxSec)秒待機する (別処理終了時に delete globalAry[key] する)
+  return new Promise(function(resolve,reject){
+      sub_waitDeleteKeyLoop(resolve,reject,globalAry,key, (maxSec*1000/intervalms)|0 ,intervalms );
+  });
+}
+function sub_waitDeleteKeyLoop(resolve,reject ,globalAry,key,cnt,intervalms=100){
+      if((!globalAry)||(!globalAry[key])){
+          if(globalAry){delete globalAry[key];}
+          resolve(true); // 待機終了
+      }else{
+          cnt--;
+          if(cnt<0){ // timeoutする
+              let strInfo=key.toString();
+              if(globalAry){
+                  if(globalAry[key]){
+                      strInfo += (" = " + globalAry[key].toString() );
+                  }
+                  delete globalAry[key];
+              }
+              reject(strInfo);
+          }else{  // 待機を継続
+              setTimeout(sub_waitDeleteKeyLoop,intervalms , resolve,reject,globalAry,key,cnt,intervalms);
+          }
+      }
+}
 
 
+
+function myObjectEqual(obj1,obj2){
+    return false;
+}
 
 //***********  Export ***************
-export { myconsolelog ,myDateTimeFormat };
+export { myconsolelog ,myDateTimeFormat , myObjectEqual ,createPromise_waitDeleteKey };
 
 window.fb_myconsolelog=myconsolelog;
 window.buildHtmlpageSource=buildHtmlpageSource;

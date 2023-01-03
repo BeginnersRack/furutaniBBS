@@ -193,8 +193,45 @@ function mytest(){
     }
 }
 
-
-
+async function indexedDB_deleteAll(dbname="furutaniBBS",forceflg=false){
+    let exeflg=true;
+    if(!forceflg){
+        let cntaryPromise = window.parent.indexedDB_countAll();
+        let cntary = await cntaryPromise.catch(function(errmsg){alert(errmsg);return false;});
+        if(!cntary){exeflg=false;}else{
+            let ttl=0;
+            for(let em of Object.keys(cntary))ttl+=cntary[em];
+            let msg=`indexedデータベース[${dbname}]を削除します。\n宜しいですか？`;
+            msg += `\n\n（現在、${cntary.length}件のストアに計${ttl}件のデータが保存されています）`;
+            exeflg=confirm(msg)
+        }
+    }
+    if(!exeflg){return;}
+    //------------
+    let DBDeleteRequest = window.indexedDB.deleteDatabase(dbname);
+    DBDeleteRequest.onerror = function(event) {
+      console.log(`[Error] indexedデータベース[${dbname}]の削除中にエラーが発生しました。`);
+    };
+    DBDeleteRequest.onsuccess = function(event) {
+      console.log(`[Info] indexedデータベース[${dbname}]が正常に削除されました。`);
+    };
+}
+function localstorage_deleteAll(forceflg=false){
+    let exeflg=true;
+    if(!forceflg){
+        if(localStorage.length==0){
+            exeflg=false;
+            alert("localstorageにはデータが有りません。");
+        }else{
+            let msg="localstorageをクリアします。\n宜しいですか？";
+            msg += `\n\n （現在、${localStorage.length}件のデータが保存されています）`;
+            exeflg=confirm(msg);
+        }
+    }
+    if(!exeflg){return;}
+    //------------
+    localStorage.clear();
+}
 
 
 //***********  Export ***************

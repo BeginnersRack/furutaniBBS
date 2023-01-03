@@ -136,6 +136,10 @@ function getOpenedWindow(name){
 }
 
 
+//---------
+
+createHtmlElement_button("BBS","changeIframeTarget_main('bbs01')","my_auth",1);
+
 
 
 
