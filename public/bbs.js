@@ -3,6 +3,9 @@ const HtmlElement_myTableDivId ="bbs_ListTable";
 //---------------------------------------
 let HtmlElement_myTableDiv = null;
 function func_iframeOnload(){ // iframeの親から、onloadイベントで呼び出される
+    window.parent.setEventOfButton_moveFramePage(document,"button_footprint01","home");
+    window.parent.setEventOfButton_moveFramePage(document,"button01","bbs01");
+
     HtmlElement_myTableDiv = document.getElementById(HtmlElement_myTableDivId);
 
 
@@ -21,9 +24,6 @@ function func_iframeOnload(){ // iframeの親から、onloadイベントで呼�
 
 
 //***********
-function moveFramePage(pagename){
-    window.parent.changeIframeTarget_main(pagename);
-}
 
 function mytest(){
     // ----------for test--------

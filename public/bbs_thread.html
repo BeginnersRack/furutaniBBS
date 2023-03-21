@@ -6,21 +6,28 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>BulletinBoard01</title>
+    <title>BulletinBoard-thread</title>
 
     <script type="text/javascript" src="./bbs_thread.js"></script>
 
   </head>
   <body>
+    <p id="footprint">
+       <input type="button" id="button_footprint01" value="Home" /> 
+       <input type="button" id="button_footprint02" value="BBS" /> 
+       <input type="button" id="button_footprint03" value="BBS??" /> 
+       > bbsThread </p>
     <h1><span id="bbsThread_title"></span></h1>
-    <input type="button" id="button01" value="Home" onclick="moveFramePage('home');" /> <br/>
-    <input type="button" id="button02" value="BBS" onclick="moveFramePage('bbs');" /> <br/>
-    
     
     <div id="bbsThread_Details"></div>
     <div id="bbsThread_ListTable"></div>
     <div id="bbsThread_controll"></div>
     
-    a<span id="forTest"></span>z
+    <div id="bbsComment_NewDetails" style="display:none;">
+        <textarea id="bbsComment_NewDetailsText" style="width:100%; height:80px;"></textarea>
+        <input type="button" id="button_submitComment" value="コメント投稿" /> 
+    </div>
+    
+    a<span id="forTest"></span>zzzz
   </body>
 </html>

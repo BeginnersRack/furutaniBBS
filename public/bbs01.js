@@ -5,7 +5,10 @@ const HtmlElement_myControllDivId ="bbs01_controll";
 //---------------------------------------
 let HtmlElement_myTableDiv = null;
 function func_iframeOnload(){ // iframeの親から、onloadイベントで呼び出される
+    window.parent.setEventOfButton_moveFramePage(document,"button_footprint01","home");
+    window.parent.setEventOfButton_moveFramePage(document,"button_footprint02","bbs");
     
+    //---------
     dispBBSList();
     dispBBSControllBtn();
     
@@ -16,6 +19,12 @@ function func_iframeOnload(){ // iframeの親から、onloadイベントで呼�
     if(1==2){  mytest(); }
 };
 
+function moveFramePage(pagename,threadCode,bbsCode="BBS01"){
+    let opt={};
+    opt["b"]=bbsCode;
+    opt["t"]=threadCode;
+    window.parent.changeIframeTarget_main(pagename,opt);
+}
 
 // -------------------------------
 const expandDirection = -1; // 0:順方向(古いものから)  -1:逆方向(新しいものから)
@@ -25,6 +34,8 @@ let counterOfPageNumber = 0; // 表示頁数(最初は０)
 async function dispBBSList(){
     let tgtElem = document.getElementById(HtmlElement_myTableDivId);
     if(!tgtElem){return;}
+    
+    let strdbpath = "BulletinBoardList/BBS01/threadList";
     
     let dispContents="";
     //----
@@ -37,14 +48,15 @@ async function dispBBSList(){
         itempos = 0-itempos-1;
         itemnumber = 0-itemnumber;
     }
-    let data = await window.parent.fb_getDataFromFirestoreDb("BulletinBoardList/BBS01/threadList",itempos,itemnumber);
+    let data = await window.parent.fb_getDataFromFirestoreDb( strdbpath ,itempos,itemnumber);
     let keylist=Object.keys(data);
     for(let key in keylist){
         let tgtdoc = data[keylist[key]];
         dispContents += `<tr myinfo_pos="${keylist[key]}" myinfo_sort="${tgtdoc.sort}">`;
         
         dispContents += `<td>${tgtdoc.threadtype}</td>`;
-        let strA =`<a href="javascript:moveFramePage('bbs_thread','${tgtdoc.primaryKey}')">${tgtdoc.title}</a>`;
+        //let strA =`<a href="javascript:moveFramePage('bbs_thread','${tgtdoc.primaryKey}')">${tgtdoc.title}</a>`;
+        let strA =`<input type="button" value="開く" onclick="moveFramePage('bbs_thread','${tgtdoc.primaryKey}')" />${tgtdoc.title}`
         dispContents += `<td>${strA}</td>`;
         dispContents += `<td>${tgtdoc.ownername}</td>`;
         dispContents += `<td>${tgtdoc.overview}</td>`;
@@ -112,12 +124,7 @@ function func_expandPageNext(directionFlg){
 
 
 //---------------------------
-function moveFramePage(pagename,threadCode,bbsCode="BBS01"){
-    let opt={};
-    opt["b"]=bbsCode;
-    opt["t"]=threadCode;
-    window.parent.changeIframeTarget_main(pagename,opt);
-}
+
 async function aa(){
     
     let data = await window.parent.fb_getDataFromFirestoreDb("BulletinBoardList/BBS01/threadList",0,5);

@@ -3,8 +3,10 @@
 
 
 
-function moveFramePage(pagename){
+function func_iframeOnload(){ // iframeの親から、onloadイベントで呼び出される
+
+    window.parent.setEventOfButton_moveFramePage(document,"button01","bbs");
     
-    window.parent.changeIframeTarget_main(pagename);
-    
-}
+};
+
+

@@ -14,7 +14,8 @@ import { myconsolelog } from "./myfunc_common.js";
 
 const HtmlElement_myAuthDivId ="my_auth";
 const HtmlElement_myAuthDiv = document.getElementById(HtmlElement_myAuthDivId);
-
+const HtmlElement_iframeMainId ="iframe_main";
+const HtmlElement_iframeMain = document.getElementById(HtmlElement_iframeMainId);
 
 const str_signInButton = `<button class="btn btn-primary" type="submit"  onClick="fb_signIn()">サインイン<\/button>`;
 const str_signOutButton = `<button class="btn btn-primary" type="submit"  onClick="fb_signOut()">サインアウト<\/button>`;
@@ -196,7 +197,7 @@ function createNewUser(email, password){
 }
 //サインイン
 //    phase  0:パスワード入力要求  1:パスワード認証チェック   2:新規ユーザー作成
-function signIn(phase  ,  email0="",password0=""){
+function signIn(phase=0  ,  email0="",password0=""){
 
     let email = "";
     let password="";
@@ -221,7 +222,7 @@ function signIn(phase  ,  email0="",password0=""){
               fb_signIn(execflg);  }}
             `;
             const signInMessage = `
-                <p>デフォルト<br><input type="radio" name="signin_q1" value="exist" checked> パスワード入力
+                <p>デフォルト <input type="radio" name="signin_q1" value="exist" checked> パスワード入力
                                  <input type="radio" name="signin_q1" value="new"> 新規作成
                 </p>
   <label style={{ display: "block" }}>email</label> <input id="signin_email" type="email"></input>
@@ -232,6 +233,7 @@ function signIn(phase  ,  email0="",password0=""){
   送信</button>
             `;
             
+            HtmlElement_iframeMain.style.visibility = "hidden";
             HtmlElement_myAuthDiv.innerHTML =  signInMessage;
           }
       break;

@@ -295,8 +295,8 @@ function createConnectionMembersListData(elem){
     data['lastlogoff']=elem.lastlogoff;
     return data;
 }
-let ConnectionLogData_logmodeFlg = 0; // console.logへの出力をDBにも記録するかどうかのフラグ
 
+let ConnectionLogData_logmodeFlg = 0; // console.logへの出力をDBにも記録するかどうかのフラグ
 function setConnectionMembersListListener(tgtHtmlElem){
     const dbpathBase = createAryConnectionLogDatas_path("");
     const myQuery = {orderByChild:"logoff",equalTo:0}; // {orderByChild:"timestamp",startAt:getServerTimeFromRTDB()-10000};
@@ -305,33 +305,40 @@ function setConnectionMembersListListener(tgtHtmlElem){
     let myuser = getUserForLog();
     let myuserid = (myuser ? ( myuser.uid ? myuser.uid : "" ) : "");
     
+    function set_ConnectionMembersList(dbdata,key){
+        let elem = dbdata[key];
+        let data = createConnectionMembersListData(elem);
+        ConnectionMembersList[(elem.usercode ? elem.usercode : key)]=data;
+        if(key==myuserid){
+            ConnectionLogData_logmodeFlg = data.logmode; // Logの記録方法を設定
+            if(data.logoff){
+                myconsolelog(`[Error] 現アクセス者のLogoff時刻が記録されています！：${data.logoff}`);
+            }
+        }
+        return data;
+    }
+    
     getRTDBdatas("get",dbpathBase    //  ***  初回の全件取得
          ,function(snapshot){  // 第3引数：onValueイベント処理(resolve)
             const dbdata = snapshot.val();
             if(dbdata){
                 for(let key of Object.keys(dbdata)){
-                        let elem = dbdata[key];
-                        let data = createConnectionMembersListData(elem);
-                        ConnectionMembersList[(elem.usercode ? elem.usercode : key)]=data;
-                        if(key==myuserid){ConnectionLogData_logmodeFlg = data.logmode;}
+                    set_ConnectionMembersList(dbdata,key);
                 }
                 //--------------
-                getRTDBdatas_promise("on",dbpathBase   //  ***  初回以降はアクセス中の者のみ取得
+                getRTDBdatas_promise("on",dbpathBase   //  ***  初回以降はアクセス中の者のみ取得したい
                         ,function(snapshot){  // 第3引数：onValueイベント処理(resolve)
                             const dbdata = snapshot.val();
                             
-                            for(let key of Object.keys(ConnectionMembersList)){
+                            for(let key of Object.keys(ConnectionMembersList)){ // 一旦、全員切断として初期化
                                 ConnectionMembersList[key].connect = false;
                             }
                             if(dbdata){
                                 let cnt=0;
                                 //cnt = Object.keys(dbdata).length;
                                 for(let key of Object.keys(dbdata)){
-                                    let elem = dbdata[key];
-                                    let data = createConnectionMembersListData(elem);
-                                    ConnectionMembersList[(elem.usercode ? elem.usercode : key)]=data;
-                                    if(key==myuserid){ConnectionLogData_logmodeFlg = data.logmode;}
-                                    if(data.connect){cnt++;}
+                                    let data = set_ConnectionMembersList(dbdata,key);
+                                    if(data.connect){cnt++;} // logoff値が無いなら+1
                                 }
                                 
                                 //for(let key of Object.keys(ConnectionMembersList)){
@@ -368,7 +375,7 @@ function setConnectionMembersListListener(tgtHtmlElem){
 // ========================================
 // サーバ時刻(近似)の取得
 let serverTimeOffsetFromRTDB = null;
-function getServerTimeFromRTDB(enforce=false){
+function getServerTimeFromRTDB(enforce=false,returnPromseFlg=false){
     let offsetInitFlg=enforce;
     if(!offsetInitFlg){
         if(!serverTimeOffsetFromRTDB){if(typeof serverTimeOffsetFromRTDB!="number"){
@@ -376,20 +383,31 @@ function getServerTimeFromRTDB(enforce=false){
         }}
     }
     if(offsetInitFlg){
-        let stsoSnapshot=getRTDBdatas("once",'/.info/serverTimeOffset'   // Firebase定数 //
-        , function(stsoSnapshot){
-                
-                if(stsoSnapshot){if(stsoSnapshot.exists()){
-                    let stso = stsoSnapshot.val();
-                    if(stso){if(typeof stso=="number"){
-                        serverTimeOffsetFromRTDB = parseInt( stso , 10);
-                        myconsolelog(`realtimeデータベースより サーバ時刻オフセットを取得：${stso}`);
+    
+        let newpromise = new Promise(function(resolve,reject){
+            let stsoSnapshot=getRTDBdatas("once",'/.info/serverTimeOffset'   // Firebase定数 //
+            , function(stsoSnapshot){
+                    
+                    if(stsoSnapshot){if(stsoSnapshot.exists()){
+                        let stso = stsoSnapshot.val();
+                        if(stso){if(typeof stso=="number"){
+                            serverTimeOffsetFromRTDB = parseInt( stso , 10);
+                            myconsolelog(`realtimeデータベースより サーバ時刻オフセットを取得：${stso}`);
+                            resolve( (new Date()).getTime() + serverTimeOffsetFromRTDB );
+                        }}
                     }}
-                }}
-                
+                    
+            });
         });
         
+        if(returnPromseFlg) return newpromise;
+    } else {
+        if(returnPromseFlg){
+            return new Promise(function(resolve,reject){resolve( (new Date()).getTime() + serverTimeOffsetFromRTDB )});
+        }
     }
+    
+    
     let adjust = serverTimeOffsetFromRTDB ? serverTimeOffsetFromRTDB : 0;
     return ((new Date()).getTime()+adjust);
 

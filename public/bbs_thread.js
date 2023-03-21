@@ -2,6 +2,9 @@ const HtmlElement_myTitleSpanId ="bbsThread_title";
 const HtmlElement_myDetailsDivId ="bbsThread_Details";
 const HtmlElement_myTableDivId ="bbsThread_ListTable";
 const HtmlElement_myControllDivId ="bbsThread_controll";
+const HtmlElement_myNewDetailsDivId ="bbsComment_NewDetails";
+const HtmlElement_myNewDetailsTextareaId ="bbsComment_NewDetailsText";
+const HtmlElement_mybutton_submitComent_BtnId ="button_submitComment";
 
 const indexedDbName = "furutaniBBS";
 
@@ -10,10 +13,16 @@ const pageconfig={};
 //---------------------------------------
 let HtmlElement_myTableDiv = null;
 async function func_iframeOnload(){ // iframeの親から、onloadイベントで呼び出される
-    
     let urlOptionsAry = window.parent.getUrloptions(window.location.search);
     pageconfig.bbsCode = urlOptionsAry["b"];
     pageconfig.threadCode = urlOptionsAry["t"];
+    //---------
+    window.parent.setEventOfButton_moveFramePage(document,"button_footprint01","home");
+    window.parent.setEventOfButton_moveFramePage(document,"button_footprint02","bbs");
+    window.parent.setEventOfButton_moveFramePage(document,"button_footprint03",pageconfig.bbsCode,{},pageconfig.bbsCode);
+    
+    //---------
+
     
     const storeName="BulletinBoardList/"+pageconfig.bbsCode+"/threadList";
     pageconfig.threadDocInfo = await window.parent.getdataFromIndexedDb(indexedDbName ,storeName ,pageconfig.threadCode);
@@ -25,8 +34,9 @@ async function func_iframeOnload(){ // iframeの親から、onloadイベント�
     //---------
     
     dispDetails();
-    //dispBBSList();
-    //dispBBSControllBtn();
+    
+    dispBBSList();
+    dispBBSControllBtn();
     
     //---------
     
@@ -34,6 +44,14 @@ async function func_iframeOnload(){ // iframeの親から、onloadイベント�
     
     if(1==2){  mytest(); }
 };
+
+function moveFramePage(pagename,commentCode="",threadCode=(pageconfig.threadCode || ""),bbsCode=(pageconfig.bbsCode || "BBS01") ){
+    let opt={};
+    if(bbsCode)    opt["b"]=bbsCode;
+    if(threadCode) opt["t"]=threadCode;
+    if(commentCode)opt["c"]=commentCode;
+    window.parent.changeIframeTarget_main(pagename,opt);
+}
 
 
 // -------------------------------
@@ -45,10 +63,11 @@ async function dispBBSList(){
     let tgtElem = document.getElementById(HtmlElement_myTableDivId);
     if(!tgtElem){return;}
     
-    let strdbpath = "BulletinBoardList/"+pageconfig.bbsCode+"/threadList/"+pageconfig.threadCode;
+    let strdbpath = "BulletinBoardList/"+pageconfig.bbsCode+"/threadList/"+pageconfig.threadCode+"/discussion";
     
     let dispContents="";
-    //----
+    //----------------
+    dispContents+="記事内容<br />";
     dispContents+="<table width=100%>";
     dispContents+="<tr> <th>種別</th> <th>タイトル</th> <th>担当</th> <th>内容</th> </tr>";
     
@@ -65,7 +84,9 @@ async function dispBBSList(){
         dispContents += `<tr myinfo_pos="${keylist[key]}" myinfo_sort="${tgtdoc.sort}">`;
         
         dispContents += `<td>${tgtdoc.threadtype}</td>`;
-        let strA =`<a href="javascript:moveFramePage('bbs_thread','${tgtdoc.primaryKey}')">${tgtdoc.title}</a>`;
+        const idxPKey=(tgtdoc.primaryKey.split("/"));
+        const fsPKey= idxPKey[idxPKey.length-1];
+        let strA =`<a href="javascript:moveFramePage('bbs_comment','${fsPKey}')">${tgtdoc.title}</a>`;
         dispContents += `<td>${strA}</td>`;
         dispContents += `<td>${tgtdoc.ownername}</td>`;
         dispContents += `<td>${tgtdoc.overview}</td>`;
@@ -75,11 +96,11 @@ async function dispBBSList(){
     
     dispContents+="</table>";
     
-    //----
+    //--
     tgtElem.innerHTML ="";
     tgtElem.insertAdjacentHTML('beforeend', dispContents );
-    //----
     
+    //------------------
     let btn1 = document.getElementById("button_expandPageBackward");
     if(btn1){
         if(itempos==expandDirection){
@@ -110,22 +131,28 @@ async function dispDetails(){
     let dispContents="";
     //----
     
-    let strdbpath = "BulletinBoardList/"+pageconfig.bbsCode+"/threadList/"+pageconfig.threadCode;
-    let data = await window.parent.fb_getDataFromFirestoreDb_singleDoc(strdbpath+"/threadConfig","content").catch(function(reject){
-        console.log("[Error] getDataFromFirestoreDb_singleDoc : "+strdbpath + reject);
+    let strdbpath = "BulletinBoardList/"+pageconfig.bbsCode+"/threadList/"+pageconfig.threadCode+"/contents";
+    let data_config = await window.parent.fb_getDataFromFirestoreDb_singleDoc(strdbpath,"_system").catch(function(reject){
+        console.log("[Error] getDataFromFirestoreDb_singleDoc : "+strdbpath +" _system : "+ reject);
         return null;
     });
-    if(!data){ return; }
+    if(!data_config){ return; }
     
     
-    
-    
-    
+    // -----
     dispContents+="<table width=100%>";
-    dispContents+="<tr> <th>詳細</th>  </tr>";
-    dispContents+=`<tr> <td> ${data.details}  </td>  </tr>`;
+    dispContents+="<tr> <th>記事内容</th>  </tr>";
     
+    let data = await window.parent.fb_getDataFromFirestoreDb( strdbpath ,0,1000);
+    let keylist=Object.keys(data);
+    for(let key in keylist){
+        let tgtdoc = data[keylist[key]];
+        
+        dispContents+=`<tr> <td> ${tgtdoc.details}  </td>  </tr>`;
+        
+    }
     dispContents+="</table>";
+    
     
     //----
     tgtElem.innerHTML ="";
@@ -147,7 +174,7 @@ function dispBBSControllBtn(){
     dispContents+=`<input type="button" id="button_expandPageForward"  value="次ページ" onclick="func_expandPageNext(1);" /><br />`;
     
     
-    dispContents+=`<input type="button" id="button_createNewThread" value="新規作成" onclick="alert('aaa');" />`;
+    dispContents+=`<input type="button" id="button_createNewComment" value="コメントを追加" onclick="open_createNewComment();" />`;
     
     
     //----
@@ -162,17 +189,82 @@ function func_expandPageNext(directionFlg){
 
 
 
+function open_createNewComment(){
+
+    let tgtElem_newInput = document.getElementById(HtmlElement_myNewDetailsDivId);
+    if(tgtElem_newInput){
+        tgtElem_newInput.style.display ="block";
+    }
+    
+    let tgtElem_BtnForOpen = document.getElementById("button_createNewComment");
+    if(tgtElem_BtnForOpen){
+        tgtElem_BtnForOpen.disable;
+    }
+    
+    let tgtElem_BtnForExec = document.getElementById(HtmlElement_mybutton_submitComent_BtnId);
+    if(tgtElem_BtnForExec){
+        tgtElem_BtnForExec.addEventListener("click",function(ev){ createNewComment_submit(); });
+    }
+
+}
+
+function createNewComment_submit(){
+    let strMsg="";
+    const tgtElem_newInput = document.getElementById(HtmlElement_myNewDetailsTextareaId);
+    if(tgtElem_newInput){
+        strMsg = tgtElem_newInput.value;
+    }
+    if(strMsg.trim()==""){
+        window.parent.fb_myconsolelog("[Info] 登録処理を中断：内容が入力されていません");
+        alert("値を入力してください");
+        return 0;
+    }
+    //------
+    let docdata={};
+
+    const loginUser = window.parent.fb_getLoginUser();
+    
+    const strNewDetails=window.parent.escapeHtml(strMsg);
+    docdata.details = strNewDetails;
+    docdata.details_old="";
+    
+    docdata.ownerids = [loginUser.email];
+    docdata.ownername = loginUser.displayName;
+    
+    // ---------- コメントを投稿する
+    const strdbpath = "BulletinBoardList/"+pageconfig.bbsCode+"/threadList/"+pageconfig.threadCode+"/discussion";
+    if(confirm( "OK?"  )){
+        window.parent.fb_addDataToFirestore(strdbpath , docdata);
+    }
+    // ----------
+    let opt={};
+    opt["b"]=pageconfig.bbsCode;
+    opt["t"]=pageconfig.threadCode;
+    window.parent.changeIframeTarget_main("bbs_thread",opt);
+
+}
 
 
 
 
 //---------------------------
-function moveFramePage(pagename,threadCode="",bbsCode="BBS01"){
-    let opt={};
-    if(bbsCode)    opt["b"]=bbsCode;
-    if(threadCode) opt["t"]=threadCode;
-    window.parent.changeIframeTarget_main(pagename,opt);
+function test_upcomment(strMsg){
+    let strdbpath = "BulletinBoardList/"+pageconfig.bbsCode+"/threadList/"+pageconfig.threadCode+"/discussion";
+    let loginUser = window.parent.fb_getLoginUser();
+    
+    let docdata={};
+    docdata.ownerid=loginUser.email; //mailAddress
+    docdata.ownername=loginUser.displayName;
+    
+    docdata.details=window.parent.escapeHtml(strMsg);
+    
+    if(confirm( "OK?" + docdata.ownerid )){
+        window.parent.fb_addDataToFirestore(strdbpath , docdata);
+    }
 }
+
+
+
 async function aa(){
     
     let data = await window.parent.fb_getDataFromFirestoreDb("BulletinBoardList/BBS01/threadList",0,5);

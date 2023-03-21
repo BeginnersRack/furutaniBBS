@@ -2,21 +2,28 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
   
+          // request.auth：ユーザーの認証情報
+          // request.resource.data：クライアントから送られてくるfield値（更新後）
+          // resource.data：ドキュメントに格納されているフィールド値（更新前）
+          
+          // 親の設定は子に継承はされない。
+              // ユーザー情報を使用した取得ルール例    allow get: if isUserAuthenticated(userId);
+  
           function isAuthenticated() { // 条件 1
               return request.auth != null && request.auth.token.email_verified == true;
           }
           //function isUserAuthenticated(userId) { // 条件 1 かつ 条件 2
           //    return isAuthenticated() && userId == request.auth.uid;
           //}
-              // ユーザー情報の取得のルール    allow get: if isUserAuthenticated(userId);
          
          
-          function isEmail(strData) { // 条件 1
+          function isEmail(strData) { // strDataがメールアドレスとして有効かどうか。
               return (strData is string && strData.matches('^[A-Za-z0-9.$+%]{3,}[@]{1}[A-Za-z0-9]{3,}[.]{1}[A-Za-z0-9]{3,}$'));
           }
-          function isListOfEmail(aryData) { // 条件 1
-              return aryData is list;
-          }
+          //function isListOfEmail(aryData) { // 条件 1
+          //    return aryData is list;
+          //}
+          
 
     // ----------- スレッド名リストデータのルール ------------------
     function isThreadList(data) {
@@ -32,17 +39,24 @@ service cloud.firestore {
         && data.overview is string
         ;
     }
-    function isThreadListUpdatable(newData,orgData) {
-        return isThreadList(newData)
-        && newData.created == orgData.created
-        && ( (if !(orgData.keys().hasAll(['ownerids']))) || orgData.ownerids.hasAll([request.auth.token.email]));
-        ;
+    function isThreadListCreatable(newRes) {
+        return newRes.id == "_system" || (
+              isThreadList(newRes.data) 
+        );
     }
-    function isThreadListDeletable(newData,orgData) {
-        return isThreadList(newData)
-        && newData.created == orgData.created
-        && ( (if (orgData.keys().hasAll(['ownerids']))) && orgData.ownerids.hasAll([request.auth.token.email]));
-        ;
+    function isThreadListUpdatable(newRes,orgRes) {
+        return newRes.id == "_system" || (
+              isThreadList(newRes.data)
+           && newRes.data.created == orgRes.data.created
+           && ( (!(orgRes.data.keys().hasAll(['ownerids']))) || orgRes.data.ownerids.hasAll([request.auth.token.email]))
+        );
+    }
+    function isThreadListDeletable(newRes,orgRes) {
+        return (
+              isThreadList(newRes.data)
+           && newRes.data.created == orgRes.data.created
+           && ( ( (orgRes.data.keys().hasAll(['ownerids']))) && orgRes.data.ownerids.hasAll([request.auth.token.email]))
+        );
     }
       // ----------- スレッド内容データのルール ------------------
     function isThreadConfig(data) {
@@ -59,28 +73,62 @@ service cloud.firestore {
         && data.details is string
         ;
     }
-    function isThreadConfigUpdatable(newData,orgData) {
-        return isThreadConfig(newData)
-        && orgData.ownerids.hasAll([request.auth.token.email]);
+    function isThreadConfigUpdatable(newRes,orgRes) {
+        return isThreadConfig(newRes.data)
+        && orgRes.data.ownerids.hasAll([request.auth.token.email])
         ;
     }
+      // ----------- スレッド内コメントデータのルール ------------------
+    function isThreadComment(data) {
+        return data.keys().hasOnly(['sort','ownerids','ownername','created','modified','modified_sys','titlecategory','details','details_old'])
+        && data.ownerids is list
+        && data.ownername is string
+        && data.created is timestamp
+        && data.modified is timestamp
+        && data.modified_sys is timestamp
+        && data.details is string
+        && data.details_old is string
+    ;}
+    function isThreadCommentCreatable(newRes) {
+        return newRes.id == "_system" || (
+              isThreadComment(newRes.data)
+           && newRes.data.ownerids.hasAll([request.auth.token.email])
+           && newRes.data.created == request.time
+           && newRes.data.modified == request.time
+           && newRes.data.modified_sys == request.time
+        );
+    }
+    function isThreadCommentUpdatable(newRes,orgRes) {
+        return orgRes.id == "_system" || (
+              isThreadComment(newRes.data)
+           && newRes.data.diff(orgRes.data).affectedKeys().hasOnly(["ownerids","ownername","modified",'modified_sys','titlecategory',"details","details_old"])
+           && orgRes.data.ownerids.hasAll([request.auth.token.email])
+           && newRes.data.modified_sys == request.time
+        );
+    }
 
-
-    // ======================================================================
-    match /BulletinBoardList/{boardID}
-                allow read : @true;
+    // ========================= 設定本体 ===================================
+    match /BulletinBoardList/{boardID}{
+                allow read : if true;
 
         match /threadList/{threadId} {   //  スレッド名リスト
                 allow read : if isAuthenticated();
-                allow create: if isAuthenticated() && isThreadList(request.resource.data);
-                allow update: if isAuthenticated() && isThreadListUpdatable(request.resource.data,resource.data) ;
-                allow delete: if isAuthenticated() && isThreadListDeletable(request.resource.data,resource.data) ;
+                allow create: if isAuthenticated() && isThreadListCreatable(request.resource);
+                allow update: if isAuthenticated() && isThreadListUpdatable(request.resource,resource) ;
+                allow delete: if isAuthenticated() && isThreadListDeletable(request.resource,resource) ;
 
-            match /threadConfig/{id} {    //  スレッド内容データ
+            match /contents/{id} {    //  スレッド内容データ
                 allow read : if isAuthenticated();
-                allow create: if isAuthenticated() && isThreadConfig(request.resource.data);
-                allow update: if isAuthenticated() && isThreadConfigUpdatable(request.resource.data,resource.data) ;
+                allow create: if isAuthenticated() && isThreadConfig(request.resource);
+                allow update: if isAuthenticated() && isThreadConfigUpdatable(request.resource,resource) ;
             }
+            
+            match /discussion/{id} {    //  スレッド内コメントデータ
+                allow read : if isAuthenticated();
+                allow create: if isAuthenticated() && isThreadCommentCreatable(request.resource);
+                allow update: if isAuthenticated() && isThreadCommentUpdatable(request.resource,resource) ;
+            }
+            
 
         }
     }

@@ -88,7 +88,7 @@ function myLastAccessInfo(){
     let loginUser = window.parent.fb_getLoginUser();
     //let rtdbpath = window.parent.fb_createAryConnectionLogDatas_path(loginUser.uid);
     
-    let openWindowOption="width=500,height=300";
+    let openWindowOption="width=600,height=300";
     // openWindowOption +=",menubar=no,toolbar=no,status=no,location=no,scrollbars=yes,resizable=yes"; //無効
     let newwin = window.open('', "_blank", openWindowOption );
     if(newwin){
@@ -119,25 +119,28 @@ function myLastAccessInfo(){
                     let outputStr = "";
                     switch(elem){
                       case "name":
-                          outputStr = "<td>ユーザー名</td><td>" + loginUser.email +"</td>";
+                          outputStr = "<td>ユーザー名</td><td colspan='2'>" + loginUser.email +"</td>";
                           outputStr+= "<td>"+window.parent.escapeHtml( (dbval?dbval:"") ,1)+"</td>";
                         break;
                       case "timestamp":
                          {let strJst = window.parent.myDateTimeFormat(dbval);
                           let dbval2  = ( ("logoff" in dbdata) ? dbdata["logoff"] : null );
                           let strJst2= window.parent.myDateTimeFormat(dbval2);
-                          outputStr = "<td>現在の接続</td><td colspan='2'>" + strJst+"～"+strJst2+"<br/>("+ (dbval?dbval:"") +")</td>";
+                          outputStr = '<td>現在の接続</td><td style="border-right: none;">' + strJst+'<br/>('+ (dbval?dbval:"") +')</td>';
+                          outputStr+= '<td style="border-left: none; border-right: none;">～</td>';
+                          outputStr+= '<td style="border-left: none;">'+strJst2 +'</td>';
                         break;}
                       case "lasttimestamp":
                          {let dbval2  = ( ("lastlogoff" in dbdata) ? dbdata["lastlogoff"] : null );
                           let strJst1= window.parent.myDateTimeFormat(dbval);
                           let strJst2= window.parent.myDateTimeFormat(dbval2);
-                          outputStr = "<td>前回の接続</td>";
-                          outputStr+= "<td>" + strJst1+"～<br/>("+(dbval ?dbval :"")+")</td>";
-                          outputStr+= "<td>" + strJst2+"<br/>  ("+(dbval2?dbval2:"")+")</td>";
+                          outputStr = '<td>前回の接続</td>';
+                          outputStr+= '<td style="border-right: none;">' + strJst1+'<br/>('+(dbval ?dbval :"")+')</td>';
+                          outputStr+= '<td style="border-left: none; border-right: none;">～</td>';
+                          outputStr+= '<td style="border-left: none;">' + strJst2+'<br/>  ('+(dbval2?dbval2:"")+')</td>';
                         break;}
                       default:
-                          outputStr = "<td>"+elem+"</td><td colspan='2'>" + (dbval?dbval:"") +"</td>" ;
+                          outputStr = '<td>'+elem+'</td><td colspan="2">' + (dbval?dbval:"") +'</td>';
                     }
                     
                     bodyContent += "<tr>" + outputStr+"</tr>";
@@ -200,9 +203,11 @@ async function indexedDB_deleteAll(dbname="furutaniBBS",forceflg=false){
         let cntary = await cntaryPromise.catch(function(errmsg){alert(errmsg);return false;});
         if(!cntary){exeflg=false;}else{
             let ttl=0;
-            for(let em of Object.keys(cntary))ttl+=cntary[em];
+            for(let em of Object.keys(cntary)){
+                ttl+=cntary[em];
+            }
             let msg=`indexedデータベース[${dbname}]を削除します。\n宜しいですか？`;
-            msg += `\n\n（現在、${cntary.length}件のストアに計${ttl}件のデータが保存されています）`;
+            msg += `\n\n（現在、${Object.keys(cntary).length}件のストアに計${ttl}件のデータが保存されています）`;
             exeflg=confirm(msg)
         }
     }

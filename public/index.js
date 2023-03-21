@@ -86,10 +86,28 @@ window.addEventListener( ('onpagehide' in self ? 'pagehide' : 'unload') , functi
 //***********  iframeの内容を切り替えする ***************
 let str_IframeTarget_main_name="";
 
+function setEventOfButton_moveFramePage(tgtdoc,btnId,tgtName,optionAry={},btnName){
+    if(!tgtdoc)tgtdoc=document;
+    let tgtElem = tgtdoc.getElementById(btnId);
+    if(tgtElem){
+        tgtElem.addEventListener("click", (event)=>{
+            let rndFlg=false;
+            if (event.shiftKey) {
+                rndFlg=true;
+            }
+            this.changeIframeTarget_main(tgtName,optionAry,rndFlg);
+        });
+        if(btnName){
+            tgtElem.value=btnName;
+        }
+    }
+}
 function changeIframeTarget_main(caseflg , optionAry0={} ,rndflg=false){  
 
     let tgtPreElem = document.getElementById("iframe_main");
     if(!tgtPreElem){return 0;}
+    
+    tgtPreElem.style.visibility = "visible";
 
     let loginUser = fb_getLoginUser();
     if(!loginUser){return 0;}
