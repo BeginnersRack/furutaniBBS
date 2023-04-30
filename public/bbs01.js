@@ -1,10 +1,20 @@
 const HtmlElement_myTableDivId ="bbs01_ListTable";
 const HtmlElement_myControllDivId ="bbs01_controll";
+const HtmlElement_myNewDetailsDivId ="bbsThread_NewDetails";
 
+
+const comment_MaxDatasize = 100;
+
+//---
+const pageconfig={};
 
 //---------------------------------------
 let HtmlElement_myTableDiv = null;
 function func_iframeOnload(){ // iframeの親から、onloadイベントで呼び出される
+    let urlOptionsAry = window.parent.getUrloptions(window.location.search);
+    pageconfig.bbsCode = "BBS01"; // = urlOptionsAry["b"];
+    
+    //---------
     window.parent.setEventOfButton_moveFramePage(document,"button_footprint01","home");
     window.parent.setEventOfButton_moveFramePage(document,"button_footprint02","bbs");
     
@@ -28,14 +38,20 @@ function moveFramePage(pagename,threadCode,bbsCode="BBS01"){
 
 // -------------------------------
 const expandDirection = -1; // 0:順方向(古いものから)  -1:逆方向(新しいものから)
-const expandNumber = 1;      // 1頁あたりの表示行数
+const expandNumber = 10;      // 1頁あたりの表示行数
 let counterOfPageNumber = 0; // 表示頁数(最初は０)
 // -------------------------------
 async function dispBBSList(){
     let tgtElem = document.getElementById(HtmlElement_myTableDivId);
     if(!tgtElem){return;}
     
+    
+    const loginUser = window.parent.fb_getLoginUser();
+    //const adminFlg = pageconfig.threadDocInfo.ownerids.indexOf(loginUser.email) >= 0;
+    
     let strdbpath = "BulletinBoardList/BBS01/threadList";
+    
+    
     
     let dispContents="";
     //----
@@ -51,15 +67,27 @@ async function dispBBSList(){
     let data = await window.parent.fb_getDataFromFirestoreDb( strdbpath ,itempos,itemnumber);
     let keylist=Object.keys(data);
     for(let key in keylist){
-        let tgtdoc = data[keylist[key]];
+        const tgtdoc = data[keylist[key]];
+        const adminFlg = ( tgtdoc.ownerids ? (tgtdoc.ownerids.indexOf(loginUser.email) >= 0) : false );
+        const strH = tgtdoc.hideflg ? tgtdoc.hideflg :"";
+        const flgDisp = ( strH ? adminFlg : 1 );
+        
         dispContents += `<tr myinfo_pos="${keylist[key]}" myinfo_sort="${tgtdoc.sort}">`;
         
-        dispContents += `<td>${tgtdoc.threadtype}</td>`;
-        //let strA =`<a href="javascript:moveFramePage('bbs_thread','${tgtdoc.primaryKey}')">${tgtdoc.title}</a>`;
-        let strA =`<input type="button" value="開く" onclick="moveFramePage('bbs_thread','${tgtdoc.primaryKey}')" />${tgtdoc.title}`
-        dispContents += `<td>${strA}</td>`;
-        dispContents += `<td>${tgtdoc.ownername}</td>`;
-        dispContents += `<td>${tgtdoc.overview}</td>`;
+        let strT = strH;
+        if(!strT) { strT = tgtdoc.threadtype; if(!strT) { strT=""; } }
+        dispContents += `<td>${strT}</td>`;
+        
+        if(flgDisp){
+            let strA =`<a href="javascript:moveFramePage('bbs_thread','${tgtdoc.primaryKey}')">${tgtdoc.title}</a>`;
+            //let strA =`<input type="button" value="開く" onclick="moveFramePage('bbs_thread','${tgtdoc.primaryKey}')" />${tgtdoc.title}`;
+            dispContents += `<td>${strA}</td>`;
+            
+            dispContents += `<td>${tgtdoc.ownername}</td>`;
+            dispContents += `<td>${tgtdoc.overview}</td>`;
+        }else{
+            dispContents += `<td> - </td><td>${tgtdoc.ownername}</td><td> - </td>`;
+        }
         
         dispContents += `</tr>`;
     }
@@ -101,7 +129,7 @@ function dispBBSControllBtn(){
     dispContents+=`<input type="button" id="button_expandPageForward"  value="次ページ" onclick="func_expandPageNext(1);" /><br />`;
     
     
-    dispContents+=`<input type="button" id="button_createNewThread" value="新規作成" onclick="alert('aaa');" />`;
+    dispContents+=`<input type="button" id="`+HtmlElement_myNewDetailsDivId+`_createBtn" value="新規作成" onclick="open_createNewThread();" />`;
     
     
     //----
@@ -123,8 +151,130 @@ function func_expandPageNext(directionFlg){
 
 
 
-//---------------------------
 
+//---------------------------
+function open_createNewThread(){
+
+    let tgtElem_newInput = document.getElementById(HtmlElement_myNewDetailsDivId);
+    if(tgtElem_newInput){
+        let dispContents="";
+        dispContents+=`<input type="text" id="`+HtmlElement_myNewDetailsDivId+`_ttl" name="title" maxlength="100" size="40" value="">`;
+        dispContents+=`<textarea id="`+HtmlElement_myNewDetailsDivId+`_text1" style="width:100%; height:80px;"></textarea>`;
+        dispContents+=`<input type="button" id="`+HtmlElement_myNewDetailsDivId+`_submitBtn" value="新規スレッド作成" onclick="createNewThread_submit();" />`;
+        dispContents += `　<input type="button" value="入力を破棄して閉じる" onclick="createNewThread_hide();" />`;
+        // ---
+        tgtElem_newInput.innerHTML =dispContents;
+        tgtElem_newInput.style.display ="block";
+    }
+    
+    let tgtElem_BtnForOpen = document.getElementById(HtmlElement_myNewDetailsDivId+"_createBtn");
+    if(tgtElem_BtnForOpen){
+        tgtElem_BtnForOpen.disabled=true;
+    }
+
+}
+function createNewThread_hide(){
+    let tgtElem_newInput = document.getElementById(HtmlElement_myNewDetailsDivId);
+    if(tgtElem_newInput){
+        tgtElem_newInput.style.display ="none";
+        //tgtElem_newInput.innerHTML="";
+    }
+    
+    let tgtElem_BtnForOpen = document.getElementById(HtmlElement_myNewDetailsDivId+"_createBtn");
+    if(tgtElem_BtnForOpen){
+        tgtElem_BtnForOpen.disabled=false;
+    }
+}
+
+
+
+async function createNewThread_submit(){
+    let strMsg="";
+    let ngflg=0;
+    
+    let docdata1={};
+    // --------------------------
+    let tgtElem_newInput;
+    
+    tgtElem_newInput = document.getElementById(HtmlElement_myNewDetailsDivId+"_ttl");
+    if(!tgtElem_newInput){ ngflg=1; strMsg+="notFoundError：" + HtmlElement_myNewDetailsDivId+"_ttl \n"; }else{
+        if(tgtElem_newInput.value==""){
+            ngflg=1;strMsg+="タイトルを入力してください。\n";
+        }else{
+                docdata1.title = tgtElem_newInput.value.substring(0,comment_MaxDatasize);
+        }
+    }
+    
+    tgtElem_newInput = document.getElementById(HtmlElement_myNewDetailsDivId+"_text1");
+    if(!tgtElem_newInput){ ngflg=1; strMsg+="notFoundError：" + HtmlElement_myNewDetailsDivId+"_overview \n"; }else{
+        if(tgtElem_newInput.value==""){
+            ngflg=1;strMsg+="概要を入力してください。\n";
+        }else{
+                docdata1.overview = tgtElem_newInput.value.substring(0,comment_MaxDatasize);
+        }
+    }
+    // -----
+    
+    docdata1.hideflg = "作成中";
+    docdata1.threadtype="";
+    
+    // --------------------------
+    if(ngflg){
+        //window.parent.fb_myconsolelog("[Info] 登録処理を中断："+strMsg);
+        alert(strMsg);
+        return null;
+    }
+    // -----------------------------------------------------------------------------
+    
+    const loginUser = window.parent.fb_getLoginUser();
+    const strdbpath = "BulletinBoardList/"+pageconfig.bbsCode+"/threadList/"; 
+    //------
+    
+    let docdata={};
+    for(let key in docdata1){
+        docdata[key]= window.parent.escapeHtml(docdata1[key]);
+    }
+    
+    docdata.ownerids = [loginUser.email];
+    docdata.ownername = loginUser.displayName;
+    
+    
+    //------------------------------------------------------
+    // ---------- 投稿する ------
+    if(!confirm( "OK?"  )){
+        return null;
+    }
+    // ----------
+    let flgOk=0;
+    try {
+        let tryProcess =window.parent.fb_addDataToFirestore(strdbpath , docdata);
+        let try1 = await tryProcess;
+        if(try1!==null){ flgOk=1; }
+    } catch(e){
+        let msg="データの新規登録に失敗しました。";
+        window.parent.fb_myconsolelog("[Error] : "+msg );
+        setTimeout( function(){throw e;} );
+        alert(msg);
+        return null;
+    }
+    
+    if(!flgOk){
+        let msg="データの新規登録に失敗しました。";
+        window.parent.fb_myconsolelog("[Error] : " + msg );
+        alert(msg);
+    }else{
+        //------- 成功 ------
+        
+        createNewThread_hide();
+    }
+    
+}
+
+
+
+
+
+// ============================================== 以下、テスト用 ==============
 async function aa(){
     
     let data = await window.parent.fb_getDataFromFirestoreDb("BulletinBoardList/BBS01/threadList",0,5);

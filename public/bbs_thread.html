@@ -8,6 +8,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>BulletinBoard-thread</title>
 
+    <script type="text/javascript" src="./common.js"></script>
     <script type="text/javascript" src="./bbs_thread.js"></script>
 
   </head>
@@ -17,17 +18,19 @@
        <input type="button" id="button_footprint02" value="BBS" /> 
        <input type="button" id="button_footprint03" value="BBS??" /> 
        > bbsThread </p>
-    <h1><span id="bbsThread_title"></span></h1>
+    <h1 style="display:inline;"><span id="bbsThread_title"></span></h1><span id="SystemMessage01"></span>
     
+    <div id="bbsThread_Infos"></div>
+    <div id="bbsThread_vote"></div>
     <div id="bbsThread_Details"></div>
-    <div id="bbsThread_ListTable"></div>
-    <div id="bbsThread_controll"></div>
+    <div id="bbsThread_modify"></div>
+    
+    <div id="bbsPost_ListTable"></div>
+    <div id="bbsPost_controll"></div>
     
     <div id="bbsComment_NewDetails" style="display:none;">
-        <textarea id="bbsComment_NewDetailsText" style="width:100%; height:80px;"></textarea>
-        <input type="button" id="button_submitComment" value="コメント投稿" /> 
     </div>
     
-    a<span id="forTest"></span>zzzz
+    <span id="forTest"></span>
   </body>
 </html>

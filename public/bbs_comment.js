@@ -5,6 +5,8 @@ const HtmlElement_myDetailsDivId ="bbsComment_Details";
 const HtmlElement_myNewDetailsDivId ="bbsComment_NewDetails";
 const HtmlElement_myNewDetailsOldDivId ="bbsComment_Details_old";
 const HtmlElement_myControllDivId ="bbsComment_controll";
+const HtmlElement_mySystemMessage01SpanId ="SystemMessage01";
+
 //-- 以下、JavaScript内で生成するもの
 const HtmlElement_myNewDetailsTextareaId ="bbsComment_NewDetailsText";
 const HtmlElement_myNewTitleTextId ="bbsComment_NewTitleText";
@@ -14,24 +16,28 @@ const HtmlElement_mybutton_submitComent_BtnId ="button_submitComment";
 //---
 const indexedDbName = "furutaniBBS";
 
+const comment_MaxDatasize = 100;
+//---
 const pageconfig={};
+   // pageconfig.bbsCode    :(URLパラメータより)BBSコード
+   // pageconfig.threadCode :(URLパラメータより)スレッドID
+   // pageconfig.commentCode:(URLパラメータより)コメントID
    // pageconfig.threadDocInfo : 親スレッドのデータ(スレッド名ID)
    // pageconfig.threadConfig  : 親スレッドの設定データ(スレッド設定情報) = _system
    // pageconfig.postData      : コメントデータ
 
 //---------------------------------------
-let HtmlElement_myTableDiv = null;
+
 async function func_iframeOnload(){ // iframeの親から、onloadイベントで呼び出される
     let urlOptionsAry = window.parent.getUrloptions(window.location.search);
     pageconfig.bbsCode = urlOptionsAry["b"];
     pageconfig.threadCode = urlOptionsAry["t"];
     pageconfig.commentCode = urlOptionsAry["c"];
-    //---------
-    window.parent.setEventOfButton_moveFramePage(document,"button_footprint01","home");
-    window.parent.setEventOfButton_moveFramePage(document,"button_footprint02","bbs");
-    window.parent.setEventOfButton_moveFramePage(document,"button_footprint03",pageconfig.bbsCode,{},pageconfig.bbsCode);
-    window.parent.setEventOfButton_moveFramePage(document,"button_footprint04","bbs_thread",{b:pageconfig.bbsCode,t:pageconfig.threadCode},pageconfig.threadCode);
     
+    let tgtElem;
+    //----
+    const mySystemIndicatorFunc = mySystemIndicatorFunc_create(); //閉包関数
+    mySystemIndicatorFunc("nowloading",1,"Now loading...");
     //---------
     
     const storeName="BulletinBoardList/"+pageconfig.bbsCode+"/threadList";
@@ -43,10 +49,16 @@ async function func_iframeOnload(){ // iframeの親から、onloadイベント�
         console.log("[Error] getDataFromFirestoreDb_singleDoc : "+strdbpath + reject);
     });
     
-
+    let threadTitle = pageconfig.threadDocInfo.Title ? pageconfig.threadDocInfo.Title : "thread";
+    //---------
+    window.parent.setEventOfButton_moveFramePage(document,"button_footprint01","home");
+    window.parent.setEventOfButton_moveFramePage(document,"button_footprint02","bbs");
+    window.parent.setEventOfButton_moveFramePage(document,"button_footprint03",pageconfig.bbsCode,{},pageconfig.bbsCode);
+    window.parent.setEventOfButton_moveFramePage(document,"button_footprint04","bbs_thread",{b:pageconfig.bbsCode,t:pageconfig.threadCode}, threadTitle.substring(0,10) );
+    
     // -----
     
-    let tgtElem = document.getElementById(HtmlElement_myTitleSpanId);
+    tgtElem = document.getElementById(HtmlElement_myTitleSpanId);
     if(tgtElem){
         tgtElem.innerHTML = pageconfig.threadDocInfo.title;
     }
@@ -68,12 +80,37 @@ async function func_iframeOnload(){ // iframeの親から、onloadイベント�
     dispBBSControllBtn();
     
     //---------
-    
+    mySystemIndicatorFunc("nowloading",false);
     
     
     if(1==2){  mytest(); }
 };
-
+function mySystemIndicatorFunc_create(key="",flg=false,msg=""){
+    let timerIdAry={};
+    let timerId = timerIdAry[key];
+    
+    //const msgElem = await getElementByIdPromise(HtmlElement_mySystemMessage01SpanId);
+    const msgElem = document.getElementById(HtmlElement_mySystemMessage01SpanId);
+    
+    function indicatorIncriment(){
+        if(msgElem){ 
+            msgElem.innerHTML = msgElem.innerHTML +"."; 
+        }
+    }
+    //---------
+    return function(key,flg=false,msg=""){
+        if(flg){
+            if(msgElem){ msgElem.innerHTML=msg; }
+            timerIdAry[key] = setInterval(indicatorIncriment, 1000);
+        }else{
+            if(timerIdAry[key]){
+                clearInterval(timerIdAry[key]);
+            }
+            delete timerIdAry[key];
+            if(msgElem){ msgElem.innerHTML=""; }
+        }
+    }
+}
 
 
 async function dispDetails(){
@@ -263,6 +300,7 @@ function updateComment_preExec(){
     if(tgtElem_newInput){
         strMsg = tgtElem_newInput.value;
     }
+    strMsg = strMsg.substring(0,comment_MaxDatasize);
     if(strMsg.trim()==""){
         window.parent.fb_myconsolelog("[Info] 登録処理を中断：内容が入力されていません");
         alert("値を入力してください");
@@ -278,7 +316,7 @@ function updateComment_preExec(){
     
     updateComment_exec(strTtl , strMsg);
 }
-function updateComment_exec(strTtl , strMsg){
+async function updateComment_exec(strTtl , strMsg){
     const strdbpath = "BulletinBoardList/"+pageconfig.bbsCode+"/threadList/"+pageconfig.threadCode+"/discussion";
     const loginUser = window.parent.fb_getLoginUser();
     
@@ -322,18 +360,35 @@ function updateComment_exec(strTtl , strMsg){
         return 0;
     }
     // ----------
-    
-    window.parent.fb_updateDataOnFirestore(strdbpath ,  pageconfig.commentCode   , docdata);
-    
-    let opt={};
-    opt["b"]=pageconfig.bbsCode;
-    opt["t"]=pageconfig.threadCode;
-    window.parent.changeIframeTarget_main("bbs_thread",opt);
+    let flgOk=0;
+    try {
+        let tryProcess = window.parent.fb_updateDataOnFirestore(strdbpath ,  pageconfig.commentCode   , docdata);
+        let try1 = await tryProcess;
+        if(try1!==null){ flgOk=1; }
+    } catch(e){
+        let msg="データの更新登録に失敗しました。";
+        window.parent.fb_myconsolelog("[Error] : "+msg );
+        setTimeout( function(){throw e;} );
+        alert(msg);
+        return null;
+    }
+    if(!flgOk){
+        let msg="データの更新登録に失敗しました。";
+        window.parent.fb_myconsolelog("[Error] : " + msg );
+        alert(msg);
+    }else{
+        //let opt={};
+        //opt["b"]=pageconfig.bbsCode;
+        //opt["t"]=pageconfig.threadCode;
+        //window.parent.changeIframeTarget_main("bbs_thread",opt);
+        
+        func_expandPageNext(0);
+    }
 }
 
 
-//---------------------------
-
+// ------------------------------------
+// ---------- 以下、テスト用 ----------
 
 
 async function aa(){

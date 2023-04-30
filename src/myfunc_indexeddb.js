@@ -163,35 +163,41 @@ function transferDBPath(fs_refPathAndKey){    // fs_refPathAndKey = [refColPath,
     let indxdb_key="";
     let indxdb_IndxKey1=null;
     let indxdb_IndxKey2=null;
-    if(dirAry.length<=3){
+    if(dirAry.length<3){
         indxdb_key = fs_key;
-        if((fs_key=="")||(fs_key.length==20)){
-            indxdb_IndxKey1=""; //sortIndex
-            indxdb_IndxKey2="sort"; //sort
-        }
     }else{
-        indxdb_key=dirAry[3];
-        for(let i=4;i<dirAry.length;i++){
-           indxdb_key += "/"+dirAry[i]
-        }
-        if(fs_key) indxdb_key += "/"+fs_key;
-        if((fs_key=="")||(fs_key.length==20)){
-            if(dirAry[4]== "contents"){
-                indxdb_IndxKey1= "content_"+threadid; 
-                indxdb_IndxKey2="sort";
+        if(dirAry.length==3){
+            indxdb_key = fs_key;
+            if((fs_key=="")||(fs_key.length==20)){
+                indxdb_IndxKey1=dirAry[1]; //sortIndex = "BBS01"
+                indxdb_IndxKey2="sort"; //sort
             }
-            if(dirAry[4]== "discussion"){
-                indxdb_IndxKey1= "post_"+threadid; //postIndex
-                indxdb_IndxKey2="sort"; //postid
+        }else{
+            indxdb_key=dirAry[3];
+            for(let i=4;i<dirAry.length;i++){
+               indxdb_key += "/"+dirAry[i]
             }
-            if(dirAry[4]== "vote"){
-                indxdb_IndxKey1= "vote_"+threadid; //voteIndex
-                indxdb_IndxKey2="sort";
+            if(fs_key) indxdb_key += "/"+fs_key;
+            if((fs_key=="")||(fs_key.length==20)){
+                if(dirAry[4]== "contents"){
+                    indxdb_IndxKey1= "content_"+threadid; 
+                    indxdb_IndxKey2="sort";
+                }
+                if(dirAry[4]== "discussion"){
+                    indxdb_IndxKey1= "post_"+threadid; //postIndex
+                    indxdb_IndxKey2="sort"; //postid
+                }
+                if(dirAry[4]== "vote"){
+                    indxdb_IndxKey1= "vote_"+threadid; //voteIndex
+                    indxdb_IndxKey2="";
+                }
             }
         }
     }
     
     // 返値   0:ストア名、 1:キー値、  2:インデックス参照時のキー第1項の値   3:インデックス参照時のキー第2項の種別
+    //     2:indexedDBでの"sortindex"インデックスにおける、複合キー第1項の値。（第2項は3:によって列名で指定する）
+    //     3:通常は"sort"とする。indexedDBのsort列に格納する、firestore側の列の名前を指定する。
     return ([indxdb_refPath,indxdb_key , indxdb_IndxKey1,indxdb_IndxKey2 ]);
 }
 
@@ -368,30 +374,50 @@ function getKeysFromIndexedDb(dbname,storeName,indexName, sortindex_start ,sorti
             reject( null );
         }
         
-        try{
-            const objectStore=transaction.objectStore(storeName);
-            const index = objectStore.index(indexName);
-            const boundKeyRange = IDBKeyRange.bound(sortindex_start,sortindex_end , false, true);
-            
-            let ans = []; // 順番を保存したいので連想配列は不可
-            
-            index.openKeyCursor(boundKeyRange,strDirection).onsuccess = (event) => {
-                const cursor = event.target.result;
-                if (!cursor){
-                    //myconsolelog("openCursor終了")
-                    resolve(ans);
-                } else {      // ( cursor.key  ,cursor.primaryKey) openCursorなら、cursor.value
-                  
-                  ans.push( [cursor.key , cursor.primaryKey] );
-                  
-                  cursor.continue();
+        function chk_validKey(tgt){
+            if(null == tgt){return "";}
+            if(typeof tgt=="number") { return tgt.toString(); }
+            if(typeof tgt=="string") { return tgt; }
+            if(Array.isArray(tgt)){
+                for (const elem of tgt) {
+                   if(null==elem){return "";}
                 }
-            };
-            
-            
-        } catch(err) {
-            myconsolelog(`[error] Can not get data from IndexedDb[${dbname}-${storeName}-${sortindex_start}～${sortindex_end}] : ${err.code}:${err.message}`);
-            reject(err);
+                return ("["+(tgt.toString())+"]");
+            }
+        }
+        const chk_startval = chk_validKey(sortindex_start);
+        const chk_endval = (null==sortindex_end)?"null":chk_validKey(sortindex_end);
+        if( !chk_startval || !chk_endval ){
+            let abortmsg=`IndexedDb[${dbname}-${storeName}-${(chk_startval?chk_startval:"??")}～${(chk_endval?chk_endval:"??")}]`;
+            myconsolelog(`[Warning] abandon to execute 'bound' on 'IDBKeyRange': The key is not valid. ${abortmsg}`);
+            resolve([]);
+        }else{
+            try{
+                const objectStore=transaction.objectStore(storeName);
+                const index = (indexName) ? objectStore.index(indexName) : objectStore;
+                const boundKeyRange = (null==sortindex_end) ? IDBKeyRange.lowerBound(sortindex_start) : IDBKeyRange.bound(sortindex_start,sortindex_end , false, true);
+                
+                
+                let ans = []; // 順番を保存したいので連想配列は不可
+                
+                index.openKeyCursor(boundKeyRange,strDirection).onsuccess = (event) => {
+                    const cursor = event.target.result;
+                    if (!cursor){
+                        //myconsolelog("openCursor終了")
+                        resolve(ans);
+                    } else {      // ( cursor.key  ,cursor.primaryKey) openCursorなら、cursor.value
+                      
+                      ans.push( [cursor.key , cursor.primaryKey] );
+                      
+                      cursor.continue();
+                    }
+                };
+                
+                
+            } catch(err) {
+                myconsolelog(`[error] Can not get data from IndexedDb[${dbname}-${storeName}-${sortindex_start}～${sortindex_end}] : ${err.code}:${err.message}`);
+                reject(err);
+            }
         }
     });
 }
