@@ -57,6 +57,8 @@ function myopenIndexedDb(dbname){
                         //let store01D= idb.createObjectStore("BulletinBoardList/BBS01/threadDetails",{keyPath:null ,autoIncrement:false});
                         //store01D.createIndex("postIndex","['threadId_post','postid']",{unique:false,multiEntry:false});
                         //store01D.createIndex("voteIndex","['threadId_vote','ownerid']",{unique:false,multiEntry:false});
+                        
+                        let storeMR1 = idb.createObjectStore("MeetingRooms",{keyPath:null ,autoIncrement:false});
                      
                     }
                   break;
@@ -121,78 +123,114 @@ function myopenIndexedDb(dbname){
 function transferDBPath(fs_refPathAndKey){    // fs_refPathAndKey = [refColPath,refKey]
     //sample : fs_refPath = "BulletinBoardList/BBS01/threadList/(threadId)/vote"
     const dirAry = fs_refPathAndKey[0].split("/");
-    const fs_key = fs_refPathAndKey[1];
-    if(dirAry.length<=2){
-        myconsolelog(`[Error] transferDBPath for indexedDB : ${fs_refPathAndKey[0]} key=${fs_key}`);
-        return fs_refPathAndKey;
-    }
-    if(dirAry[0]!="BulletinBoardList"){
-        myconsolelog(`[Error] transferDBPath for indexedDB : ${fs_refPathAndKey[0]} key=${fs_key}`);
-        return fs_refPathAndKey;
-    }
-    if(dirAry[2]!="threadList"){
-        myconsolelog(`[Error] transferDBPath for indexedDB : ${fs_refPathAndKey[0]} key=${fs_key}`);
-        return fs_refPathAndKey;
-    }
-    //--
-    //if(dirAry.length==3){ return fs_refPathAndKey; } //  fs_refPath = "BulletinBoardList/BBS01/threadList";
-    //if(dirAry.length==4){ return fs_refPathAndKey; } //  fs_refPath = "BulletinBoardList/BBS01/threadList/(id)";
     
+    let indxdb_refPath=fs_refPathAndKey[0];
+    let indxdb_key=fs_refPathAndKey[1];
+    let indxdb_IndxKey1="";
+    let indxdb_IndxKey2="";
+    
+    switch (dirAry[0]) {
+      case "BulletinBoardList":
+        
+        const fs_key = fs_refPathAndKey[1];
+        if(dirAry.length<=2){
+            myconsolelog(`[Error] transferDBPath for indexedDB : ${fs_refPathAndKey[0]} key=${fs_key}`);
+            return fs_refPathAndKey;
+        }
+        if(dirAry[0]!="BulletinBoardList"){
+            myconsolelog(`[Error] transferDBPath for indexedDB : ${fs_refPathAndKey[0]} key=${fs_key}`);
+            return fs_refPathAndKey;
+        }
+        if(dirAry[2]!="threadList"){
+            myconsolelog(`[Error] transferDBPath for indexedDB : ${fs_refPathAndKey[0]} key=${fs_key}`);
+            return fs_refPathAndKey;
+        }
+        //--
+        //if(dirAry.length==3){ return fs_refPathAndKey; } //  fs_refPath = "BulletinBoardList/BBS01/threadList";
+        //if(dirAry.length==4){ return fs_refPathAndKey; } //  fs_refPath = "BulletinBoardList/BBS01/threadList/(id)";
+        
 
-    let threadid = dirAry[3];
-    //if(dirAry.length!=5){
-    //    myconsolelog(`[Error] transferDBPath for indexedDB : ${fs_refPathAndKey[0]} key=${fs_key}`);
-    //    return fs_refPathAndKey;
-    //}
-    //switch (dirAry[4]) {
-    //  case "discussion":
-    //      return [ dirAry[0]+"/"+dirAry[1]+"/threadDetails" , threadid+"_"+fs_key ,threadid , "postIndex"];
-    //    break;
-    //  case "vote":
-    //      return [ dirAry[0]+"/"+dirAry[1]+"/threadDetails" , threadid+"_vote_"+fs_key ,threadid, "voteIndex"];
-    //    break;
-    //  default:
-    //    myconsolelog(`[Error] transferDBPath for indexedDB : ${fs_refPathAndKey[0]} key=${fs_key}`);
-    //    return fs_refPathAndKey;
-    //}
-    
-    let indxdb_refPath=dirAry[0];
-    for(let i=1;i<=2;i++){
-       indxdb_refPath += "/"+dirAry[i]
-    }
-    let indxdb_key="";
-    let indxdb_IndxKey1=null;
-    let indxdb_IndxKey2=null;
-    if(dirAry.length<3){
-        indxdb_key = fs_key;
-    }else{
-        if(dirAry.length==3){
+        let threadid = dirAry[3];
+        //if(dirAry.length!=5){
+        //    myconsolelog(`[Error] transferDBPath for indexedDB : ${fs_refPathAndKey[0]} key=${fs_key}`);
+        //    return fs_refPathAndKey;
+        //}
+        //switch (dirAry[4]) {
+        //  case "discussion":
+        //      return [ dirAry[0]+"/"+dirAry[1]+"/threadDetails" , threadid+"_"+fs_key ,threadid , "postIndex"];
+        //    break;
+        //  case "vote":
+        //      return [ dirAry[0]+"/"+dirAry[1]+"/threadDetails" , threadid+"_vote_"+fs_key ,threadid, "voteIndex"];
+        //    break;
+        //  default:
+        //    myconsolelog(`[Error] transferDBPath for indexedDB : ${fs_refPathAndKey[0]} key=${fs_key}`);
+        //    return fs_refPathAndKey;
+        //}
+        
+        indxdb_refPath=dirAry[0];
+        for(let i=1;i<=2;i++){
+           indxdb_refPath += "/"+dirAry[i]
+        }
+        indxdb_key="";
+        indxdb_IndxKey1=null;
+        indxdb_IndxKey2=null;
+        if(dirAry.length<3){
             indxdb_key = fs_key;
-            if((fs_key=="")||(fs_key.length==20)){
-                indxdb_IndxKey1=dirAry[1]; //sortIndex = "BBS01"
-                indxdb_IndxKey2="sort"; //sort
-            }
         }else{
-            indxdb_key=dirAry[3];
-            for(let i=4;i<dirAry.length;i++){
-               indxdb_key += "/"+dirAry[i]
-            }
-            if(fs_key) indxdb_key += "/"+fs_key;
-            if((fs_key=="")||(fs_key.length==20)){
-                if(dirAry[4]== "contents"){
-                    indxdb_IndxKey1= "content_"+threadid; 
-                    indxdb_IndxKey2="sort";
+            if(dirAry.length==3){
+                indxdb_key = fs_key;
+                if((fs_key=="")||(fs_key.length==20)){
+                    indxdb_IndxKey1=dirAry[1]; //sortIndex = "BBS01"
+                    indxdb_IndxKey2="sort"; //sort
                 }
-                if(dirAry[4]== "discussion"){
-                    indxdb_IndxKey1= "post_"+threadid; //postIndex
-                    indxdb_IndxKey2="sort"; //postid
+            }else{
+                indxdb_key=dirAry[3];
+                for(let i=4;i<dirAry.length;i++){
+                   indxdb_key += "/"+dirAry[i]
                 }
-                if(dirAry[4]== "vote"){
-                    indxdb_IndxKey1= "vote_"+threadid; //voteIndex
-                    indxdb_IndxKey2="";
+                if(fs_key) indxdb_key += "/"+fs_key;
+                if((fs_key=="")||(fs_key.length==20)){
+                    if(dirAry[4]== "contents"){
+                        indxdb_IndxKey1= "content_"+threadid; 
+                        indxdb_IndxKey2="sort";
+                    }
+                    if(dirAry[4]== "discussion"){
+                        indxdb_IndxKey1= "post_"+threadid; //postIndex
+                        indxdb_IndxKey2="sort"; //postid
+                    }
+                    if(dirAry[4]== "vote"){
+                        indxdb_IndxKey1= "vote_"+threadid; //voteIndex
+                        indxdb_IndxKey2="";
+                    }
                 }
             }
         }
+        break;
+        
+      case "MeetingRooms":
+        indxdb_refPath=dirAry[0];
+        if(dirAry.length<=1){indxdb_key="";}else{indxdb_key=dirAry[1];}
+        for(let i=2;i<dirAry.length;i++){
+           indxdb_key += "/"+dirAry[i];
+        }
+        if(fs_refPathAndKey[1]){ 
+            if(indxdb_key)indxdb_key+="/";
+            indxdb_key += fs_refPathAndKey[1];
+        }
+        indxdb_IndxKey1="";
+        indxdb_IndxKey2="";
+        break;
+        
+      case "test":
+        indxdb_refPath=fs_refPathAndKey[0];
+        indxdb_key=fs_refPathAndKey[1];
+        indxdb_IndxKey1="";
+        indxdb_IndxKey2="";
+        break;
+        
+      default:
+            myconsolelog(`[Error] transferDBPath for indexedDB : ${fs_refPathAndKey[0]} key=${fs_refPathAndKey[1]}`);
+            return fs_refPathAndKey;
     }
     
     // 返値   0:ストア名、 1:キー値、  2:インデックス参照時のキー第1項の値   3:インデックス参照時のキー第2項の種別
@@ -253,7 +291,7 @@ function removedataFromIndexedDb(dbname,storeName,key){
         
         myconsolelog(`[Info] required remove data from IndexedDB : ${storeName} ${key} in ${dbname}`);
         
-        let transaction = await getTransactionOfIndexedDb(dbname,storeName);
+        let transaction = await getTransactionOfIndexedDb(dbname,storeName , true);
         if(transaction===null){ //Error
             reject( null );
         }
@@ -293,9 +331,13 @@ function getdataFromIndexedDb(dbname,storeName0,key0){
         
         let transaction = await getTransactionOfIndexedDb(dbname,storeName);
         if(transaction===null){ //Error
+            myconsolelog(`[Error] cannot open Transaction : ${storeName} in ${dbname}`);
             reject( null );
         }
-        
+        if(transaction==0){
+            myconsolelog(`[Error] cannot open Transaction :no store "${storeName}" in ${dbname}`);
+            reject( null );
+        }
         try{
             let objectStore=transaction.objectStore(storeName);
             
@@ -361,7 +403,7 @@ async function getTransactionOfIndexedDb(dbname,storeName,writableFlg=0){
 
 
 
-function getKeysFromIndexedDb(dbname,storeName,indexName, sortindex_start ,sortindex_end , direction0=false ){
+function getKeysFromIndexedDb(dbname,storeName,indexName, sortindex_start ,sortindex_end , direction0=false ,exceptkey=""){
     return new Promise(async function(resolve, reject){
         
         myconsolelog(`[Info] required getKeys data from IndexedDB(${indexName}) : ${storeName} (${sortindex_start}-${sortindex_end}) in ${dbname}`);
@@ -407,7 +449,9 @@ function getKeysFromIndexedDb(dbname,storeName,indexName, sortindex_start ,sorti
                         resolve(ans);
                     } else {      // ( cursor.key  ,cursor.primaryKey) openCursorなら、cursor.value
                       
-                      ans.push( [cursor.key , cursor.primaryKey] );
+                      if(indexName || cursor.key!=exceptkey ){
+                          ans.push( [cursor.key , cursor.primaryKey] );
+                      }
                       
                       cursor.continue();
                     }

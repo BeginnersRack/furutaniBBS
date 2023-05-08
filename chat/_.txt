@@ -1,0 +1,9 @@
+
+cd 20220925_furutaniBBS\chat
+
+
+npm run build-w
+
+
+
+--

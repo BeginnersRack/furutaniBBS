@@ -7,6 +7,7 @@ function func_iframeOnload(){ // iframeの親から、onloadイベントで呼�
 
     window.parent.setEventOfButton_moveFramePage(document,"button01","bbs");
     
+    window.parent.setEventOfButton_moveFramePage(document,"button02","meetingroom_lobby");
 };
 
 

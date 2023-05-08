@@ -113,6 +113,7 @@ async function getDataFromFirestoreDb_singleDoc(refCollectionPath,docPrimaryKey 
             await putdataToIndexedDb_fs(indexedDbName, refCollectionPath ,docPrimaryKey, newdoc , 1);
             
             delete getDataBlock_wait[refPath]; // indexedDBへのデータ登録処理の完了を通知する
+            checkListenerListener(refCollectionPath,Snapshot);
         }
     });
     
@@ -139,7 +140,7 @@ async function getDataFromFirestoreDb(refPath , startpos,datalength , blockModeF
             cntBlock=0;
             posMin=startpos;
             posMax=startpos+datalength-1;
-            if(posMin<0){if(posMax>=0){ posMax=-1; }}
+            if(posMin<0){if(posMax>=0 || datalength==0 ){ posMax=-1; }}
             cntpos=-1;//スタート位置0の1つ前
         } else {
             incrim=-1;
@@ -183,6 +184,8 @@ async function getDataFromFirestoreDb(refPath , startpos,datalength , blockModeF
                 myconsolelog("[Error] indexedDBからKey値データを取得できません："+refPath);
                 continueFlg=0;
             } else {
+                //if(!blockModeFlg){ dataary = dataary.filter(item => (Array.isArray(item) && item[0]!=(PandK[1]+"/"+indexedDb_keyName_BlockAry)) ); }
+                
                 let indexDbObjectStoreName = PandK[0];
                 
                 if(dataary.length==0){
@@ -498,8 +501,9 @@ async function getDataFromFireStore_Block(refPath,startPosition,endPosition0=0 )
                 myconsolelog("[Info] onSnapshot listener (hasPendingWrites) occured. : "+refPath+"("+(startPosition.toString())+")");
             }else{
                 let cnt = await fsdb_processSnapshot(Snapshot); // IndexedDBに退避     
-                delete getDataBlock_wait[refPath+"_"+startPosition.toString()]; // 後続処理へのトリガ
                 myconsolelog("[event] onSnapshot listener (server) occured(Block). : "+refPath+"("+(startPosition.toString())+") count="+(cnt?cnt.toString():"") );
+                delete getDataBlock_wait[refPath+"_"+startPosition.toString()]; // 後続処理へのトリガ
+                checkListenerListener(refPath,Snapshot);
             }
         });
         myconsolelog(`[Info] requested fsdb_onSnapshot Block(${startPosition}～) : ${refPath}`);
@@ -718,14 +722,41 @@ async function setAdditionalListener(refPath){ //返値は、リスナー解除�
             setTimeout( remakeAdditionalListener,0, refPath );
         }
         
+        checkListenerListener(refPath,querySnapshot);
     });
     
 }
 
 
+// -------- リスナーリスナー（firestoreからの通知によるindexedDBの更新の監視）
+let myListenerListenerAry={};
+function setListenerListener(tgtPath,callbackFunc=""){
+    delete myListenerListenerAry[tgtPath];
+    if(typeof callbackFunc == "function"){
+        myListenerListenerAry[tgtPath] = callbackFunc;
+    }
+}
+
+function checkListenerListener(tgtpath,Snapshot){
+    const callbackFunc = myListenerListenerAry[tgtpath];
+    if(typeof callbackFunc == "function"){
+        let flg=0;
+        //Snapshot.docChanges().forEach((change) => { let tgtdoc=change.doc;
+        for (const tgtdoc of Snapshot.docs){
+            if( !tgtdoc.metadata.hasPendingWrites ){
+                if( tgtpath == tgtdoc.ref.path)flg=1;
+                if( tgtpath == tgtdoc.ref.parent.path)flg=1;
+            }
+        }
+        if(flg){
+            callbackFunc(Snapshot);
+        }
+    }
+}
 
 
 
+// --------
 async function getDataCount(refPath,q_fieldname="",q_condition="",q_value=""){
     let ans=0;
     
@@ -901,11 +932,9 @@ function getKeysFromIndexedDb_fs(iDbName,PandK,rangeStart,rangeEnd0,directionFlg
     if(blockModeFlg){
         return getKeysFromIndexedDb(iDbName,PandK[0],"sortIndex" ,[indxdb_IndxKey1,rangeStart],[indxdb_IndxKey1,rangeEnd],directionFlg);
     }else{
-        return getKeysFromIndexedDb(iDbName,PandK[0],"" ,(PandK[1]+"/"),(PandK[1]+"/"+String.fromCharCode(255) ),directionFlg);
+        return getKeysFromIndexedDb(iDbName,PandK[0],"" ,(PandK[1]+"/"),(PandK[1]+"0"),directionFlg , PandK[1]+"/"+indexedDb_keyName_BlockAry );  // "0"は"/"の次 
     }
 }
-
-
 
 
 
@@ -1108,9 +1137,8 @@ window.fb_getDataFromFirestoreDb_singleDoc =getDataFromFirestoreDb_singleDoc;
 window.fb_addDataToFirestore = addDataToFirestore;
 window.fb_updateDataOnFirestore = updateDataOnFirestore;
 window.fb_deleteDataOnFirestore = deleteDataOnFirestore;
-
 window.fb_getMaxOfSortIndex = getMaxOfSortIndex;
-
+window.fb_setListenerListener = setListenerListener;
 //---
 window.fb_fs_mytest_firestore = mytest;
 // export { mytest01 };

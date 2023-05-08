@@ -280,3 +280,4 @@ window.fb_myconsolelog=myconsolelog;
 window.buildHtmlpageSource=buildHtmlpageSource;
 window.escapeHtml = escapeHtml;
 window.myDateTimeFormat = myDateTimeFormat;
+window.myTimestampToDate= myTimestampToDate;

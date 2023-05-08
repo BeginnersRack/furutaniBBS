@@ -1,0 +1,104 @@
+<html>
+<head>
+    <meta charset="utf-8"/>
+<!--<script type="text/javascript" src="https://code.jquery.com/jquery-1.11.3.min.js"></script> 
+    <script type="text/javascript" src="https://code.jquery.com/jquery-1.11.3.min.js"></script> -->
+    <script type="text/javascript" src="https://cdn.webrtc.ecl.ntt.com/skyway-latest.js"></script>
+    <script type="text/javascript" src="bundle.js"></script>
+
+  <style> div.videoframe { width:240px;height:160;overflow:auto;resize:both; } 
+          video { width: 100%;}
+  </style>
+  
+</head>
+<body>
+    <div style="float: left;">
+        <p style="font-size:24pt;vertical-align: top;margin: 5px;">うどんChat</p>   </div>
+    <div style="text-align: right">
+        your ID:<input type="text" placeholder="PeerID" id="my-peer-id" readonly>
+        <button type="button" id="my-peer-id-copy_sw">copy</button>   </div>
+    
+    <div style="clear: both; display: flex;align-items:flex-end;">
+    
+      <div style="float: left;text-align: left;">
+        追加接続先ＩＤ：<input type="text" placeholder="PeerID" id="peer-id-input">        
+        <button type="button" id="my-addNewPeer" value=0>追加</button>     </div>
+      <div><p style="font-size:8pt;margin: 0px;">　※各接続先の再生音量は初期値が０になっています。接続後に再生音量を調整してください。</p> </div>
+    
+    </div>
+    
+    <section style="clear: both;overflow: scroll; border: 2px solid #ccc; height:200;resize:both;">
+      <div id="streams"></div>
+    </section>
+
+
+
+    <table>
+    <tr><td style="vertical-align: top;">
+        Chat　　　<button type="button" id="textarea_chatMessage-input_sw">送信</button> </br>
+        <textarea id="textarea_chatMessage-input" rows="4" cols="40"></textarea> </br>
+        
+        -- Log --</br>
+        
+        <textarea id="textarea_chatMessage-log" rows="40" cols="40" readonly></textarea>
+        </br>
+        <button type="button" id="textarea_chatMessage-logsave_sw">Log保存</button> 
+        <a id="textarea_chatMessage-save_bloblink"></a>
+    </td><td style="vertical-align: top;">
+        <div>
+            <button type="button" id="my-stream_sw" value=0>映像・音声の通信開始</button><span id="my-stream_sw_message"></span>
+        </div>
+        <section style="border: 2px solid #808080;">
+        <div>
+            <!-- <audio id="my-audio" autoplay muted controls></audio><br />  -->
+            <div class="videoframe"><video id="my-video" autoplay muted></video></div>
+            <button type="button" id="my-video_sw" value=0>映像送信を開始</button> 
+            <input type="range" id="my-video_rate" min="0" max="30" step="1" value="1"><span id="my-video_rate_currentValue"></span> fps
+            　<span id="my-video_status"></span>
+        </div>
+        
+        <div style="border: 1px solid; border-color: #031de2; border-radius: 4px;">
+
+            <button type="button" id="my-mic_sw" value=0>音声送信を開始</button> 
+            <input type="range" id="my-microphoneLevel" value="1.0" min="0.0" max="2.0" step="0.1"><span id="my-microphoneLevel_currentValue"></span>
+            Mic音量 　<span id="my-mic_status"></span> <br />
+            <p>
+               <input type="checkbox" name="my-checkbox_microphoneProps" value="again">AutoGain
+               <input type="checkbox" name="my-checkbox_microphoneProps" value="noize">noiseSuppression
+            </p>
+            <p> EchoCanceler
+                <input type="radio" name="my-radio_microphoneEchoCancel" value="none"> no
+                <input type="radio" name="my-radio_microphoneEchoCancel" value="system" checked="checked"> system
+                <input type="radio" name="my-radio_microphoneEchoCancel" value="browser"> browser
+            </p>
+
+        </div>
+        </section>
+        <br />
+
+        
+        <textarea id="textarea_ResultRecognition" rows="4" cols="40" readonly></textarea> <br />
+        <input type="checkbox" id="my-checkbox_recordRecognition" value="again" checked>音声認識 
+        <span id="text_ResultRecognition_status"></span><span id="textarea_ResultRecognition_pre"></span>
+        <br />
+        <input type="checkbox" id="my-checkbox_recordRecognition_directChat" value="again" checked>(Chat直接出力) 
+        
+        <br />
+        <br />
+        
+        
+        <div>
+            <button type="button" id="my-rec_sw" value=0>rec</button> <span id="textarea_ResultRecSound"></span>
+            
+        </div>
+        
+    </td></tr>
+    </table>
+    
+    
+    <br />
+
+    
+    
+</body>
+</html>

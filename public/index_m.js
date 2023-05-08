@@ -1,6 +1,12 @@
 
 
 
+//------  meetingroom  ------
+
+//createHtmlElement_button("meeting","changeIframeTarget_main('meetingroom_lobby')","my_auth",1)
+
+
+
 
 //***********  for Test ***************
 //------  権限確認 ------
@@ -20,13 +26,13 @@ function buttonAuthCheck_Click(myflg=0){
         }
     }
 }
-// 引数 { <input>ボタンのValue値、onclick値、挿入位置基準ElementID、挿入方法 }
-createHtmlElement_button("check","buttonAuthCheck_Click()","my_auth",1)
 window.buttonAuthCheck_Click = buttonAuthCheck_Click;
-createHtmlElement_button("u","buttonAuthCheck_Click(1)","my_auth",1)
+// 引数 { <input>ボタンのValue値、onclick値、挿入位置基準ElementID、挿入方法 }
+//createHtmlElement_button("check","buttonAuthCheck_Click()","my_auth",1)
+//createHtmlElement_button("u","buttonAuthCheck_Click(1)","my_auth",1)
 
 //------  Logテスト ------
-createHtmlElement_button("AccessLog","fb_createAccessLogData(null,'test-log',0)","",0);
+//createHtmlElement_button("AccessLog","fb_createAccessLogData(null,'test-log',0)","",0);
 
 
 //------  signoutテスト ------
@@ -47,17 +53,15 @@ function closeBrowserOp(){
             if(!flg_RTDBwritten) intCnt=0;
         }
 }
-createHtmlElement_button("signout-test","closeBrowserOp();alert()","",0);
-window.closeBrowserOp = closeBrowserOp;
-
-
-createHtmlElement_button("clear-localStorage","localStorage.clear();alert()","",0);
+//window.closeBrowserOp = closeBrowserOp;
+//createHtmlElement_button("signout-test","closeBrowserOp();alert()","",0);
+//createHtmlElement_button("clear-localStorage","localStorage.clear();alert()","",0);
 
 
 //------  iframeテスト ------
 
 // 引数 { <input>ボタンのValue値、onclick値、挿入位置基準ElementID、挿入方法 }
-createHtmlElement_button("myAccount","changeIframeTarget_main('myAccount')","my_auth",1)
+//createHtmlElement_button("myAccount","changeIframeTarget_main('myAccount')","my_auth",1)
 
 
 function buttonChangeIframeTargetTest_Click(caseflg){  
@@ -77,16 +81,17 @@ function buttonChangeIframeTargetTest_Click(caseflg){
     }
 
 }
+//window.changeIframeTargetTest_Click = buttonChangeIframeTargetTest_Click;
 // 引数 { <input>ボタンのValue値、onclick値、挿入位置基準ElementID、挿入方法 }
-createHtmlElement_button("force","changeIframeTargetTest_Click('myAccount')","my_auth",1)
-window.changeIframeTargetTest_Click = buttonChangeIframeTargetTest_Click;
+//createHtmlElement_button("force","changeIframeTargetTest_Click('myAccount')","my_auth",1)
 
-createHtmlElement_button("404","changeIframeTargetTest_Click('sghrwt')","my_auth",1)
+
+//createHtmlElement_button("404","changeIframeTargetTest_Click('sghrwt')","my_auth",1)
 
 
 //------  iframeテスト ------
-createHtmlElement_button("Home","changeIframeTarget_main('home')","",0);
-createHtmlElement_button("x","changeIframeTarget_main('')","",0);
+//createHtmlElement_button("Home","changeIframeTarget_main('home')","",0);
+//createHtmlElement_button("x","changeIframeTarget_main('')","",0);
 
 
 
@@ -102,7 +107,11 @@ function button_test_postMessage_Click(caseflg){
 }
 
 window.button_test_postMessage_Click = button_test_postMessage_Click;
-createHtmlElement_button("postMessage","button_test_postMessage_Click()","my_auth",1);
+//createHtmlElement_button("postMessage","button_test_postMessage_Click()","my_auth",1);
+
+
+
+
 
 function func_test_postMessage_recieve(event){  
     console.log("A");
@@ -113,7 +122,7 @@ function func_test_postMessage_recieve(event){
         }
     }
 }
-window.addEventListener("message", func_test_postMessage_recieve, false);
+//window.addEventListener("message", func_test_postMessage_recieve, false);
 
 // --
 function button_test_changeWindowName_Click(caseflg){  
@@ -122,7 +131,7 @@ function button_test_changeWindowName_Click(caseflg){
     if(newWinName){ window.name = newWinName; }
 }
 window.button_test_changeWindowName_Click = button_test_changeWindowName_Click;
-createHtmlElement_button("rename","button_test_changeWindowName_Click()","my_auth",1);
+//createHtmlElement_button("rename","button_test_changeWindowName_Click()","my_auth",1);
 
 function getOpenedWindow(name){
 	let winobj=window.open('',name,'left=0,top=0,width=0,height=0');
@@ -138,7 +147,7 @@ function getOpenedWindow(name){
 
 //---------
 
-createHtmlElement_button("BBS","changeIframeTarget_main('bbs01')","my_auth",1);
+//createHtmlElement_button("BBS","changeIframeTarget_main('bbs01')","my_auth",1);
 
 
 
@@ -148,8 +157,8 @@ function button_test01_Click(caseflg){
     alert("test01");
     console.log("test01");
 }
-window.buttonTest01_Click = button_test01_Click;
+//window.buttonTest01_Click = button_test01_Click;
 //<input type="button" value="test01" onclick="func()">を作成
 // 引数 { <input>ボタンのValue値、onclick値、挿入位置基準ElementID、挿入方法 }
-createHtmlElement_button("test01","buttonTest01_Click()","my_auth",1)
+//createHtmlElement_button("test01","buttonTest01_Click()","my_auth",1)
 
