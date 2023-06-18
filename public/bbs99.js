@@ -8,7 +8,7 @@ const BBS_Configs={};
 let HtmlElement_myTableDiv = null;
 async function func_iframeOnload(){ // iframeの親から、onloadイベントで呼び出される
     let urlOptionsAry = window.parent.getUrloptions(window.location.search);
-    pageconfig.bbsCode = urlOptionsAry["b"]; // c_bbsCode; 
+    pageconfig.bbsCode = urlOptionsAry["b"]; // c_bbsCode; ;
     
     if(!pageconfig.bbsCode){
         let spary = window.location.pathname.split('/');
@@ -20,10 +20,14 @@ async function func_iframeOnload(){ // iframeの親から、onloadイベント�
             }
         }
     }
+    if(pageconfig.bbsCode){
+        pageconfig.FilenameCode = pageconfig.bbsCode.toLowerCase()
+    }else{
+        window.parent.changeIframeTarget_main("bbs",{});return;
+    }
     
-    const confAry = await import('./'+pageconfig.bbsCode+'.js').catch(()=>{
-        window.parent.changeIframeTarget_main("bbs",{});
-        return;
+    const confAry = await import('./'+pageconfig.FilenameCode+'.js').catch(()=>{
+        window.parent.changeIframeTarget_main("bbs",{});return;
     });
     if(confAry){
         if(confAry.PM_BBSconfigs){

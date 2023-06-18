@@ -38,8 +38,9 @@ async function func_iframeOnload(){ // iframeの親から、onloadイベント�
     let urlOptionsAry = window.parent.getUrloptions(window.location.search);
     pageconfig.bbsCode = urlOptionsAry["b"];
     pageconfig.threadCode = urlOptionsAry["t"];
+    pageconfig.FilenameCode = pageconfig.bbsCode.toLowerCase();
     
-    const confAry = await import('./'+pageconfig.bbsCode+'.js');
+    const confAry = await import( './'+pageconfig.FilenameCode+'.js' );
     if(confAry){
         if(confAry.PM_BBSconfigs){
             BBS_Configs.c_bbsCode = confAry.PM_BBSconfigs.c_bbsCode;
@@ -84,7 +85,7 @@ async function func_iframeOnload(){ // iframeの親から、onloadイベント�
     //---------
     window.parent.setEventOfButton_moveFramePage(document,"button_footprint01","home");
     window.parent.setEventOfButton_moveFramePage(document,"button_footprint02","bbs");
-    window.parent.setEventOfButton_moveFramePage(document,"button_footprint03",pageconfig.bbsCode,{},pageconfig.bbsCode);
+    window.parent.setEventOfButton_moveFramePage(document,"button_footprint03",pageconfig.FilenameCode,{},pageconfig.bbsCode);
     
     //---------
     
