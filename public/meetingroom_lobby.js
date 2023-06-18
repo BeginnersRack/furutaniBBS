@@ -69,7 +69,7 @@ async function func_iframeOnload(){ // iframeの親から、onloadイベント�
         dispRoomsInfo();
     }
     function updateRoominfosM(Snapshot){
-        if(winobj_chat) { mypostWinMessage(winobj_chat,"participant",pageconfig.participants); }
+        if(winobj_chat) { mypostWinMessage(winobj_chat,"participants",pageconfig.participants); }
         dispRoomsInfo();
     }
     let p1=createRoomDataAryListener( updateRoominfosR );    // pageconfig.RoomList
@@ -475,6 +475,7 @@ function check_winChatclosed(msg=""){
     dispRoomsInfo();
 }
 function chatwin_messageAction(event){
+    const loginUser = window.parent.fb_getLoginUser();
     if( (event.source && event.origin!=event.source.location.origin) || event.origin!=window.location.origin ){   
         console.log("[Error] got illegal Message from : "+ event.source.location.origin );
     }else{
@@ -482,6 +483,7 @@ function chatwin_messageAction(event){
             console.log("[Error] got not-regular Message from : "+ event.origin );
         }else{
             Object.keys(event.data).forEach((onekey) => {
+                console.log("[Info] got window-Message ["+onekey+"] from : "+ (event.source ? event.source.name : "??") );
                 switch(onekey){
                   case "quit":
                     check_winChatclosed("child closing.");
@@ -489,7 +491,7 @@ function chatwin_messageAction(event){
                   case "log":
                     console.log("[Info] got Message : "+ event.data[onekey] );
                     break;
-                  case "skywaykey":
+                  case "request_skywaykey":
                     let rep= (pageconfig.SkyWayKey ? pageconfig.SkyWayKey.SkyWayKey : null);
                     mypostWinMessage(event.source,"skywaykey",rep);
                     console.log("[Info] reply Message [skyWayKey] : "+ rep.toString() );
@@ -500,8 +502,34 @@ function chatwin_messageAction(event){
                     if(!timerId_checkContinued){ setTimeout( function(){checkContinued(event.data[onekey]);},10000); }
                     break;
                   case "check_peerid":
-                    console.log("[Info] got Message : peerId = "+ event.data[onekey] );
                     checkContinued(event.data[onekey]);
+                    break;
+                  case "request_roomlist":
+                    if(winobj_chat) {
+                        mypostWinMessage(winobj_chat,"roomlist", pageconfig.RoomList ); 
+                        console.log("[Info] reply Message [roomInfo]  " );
+                    }
+                    break;
+                  case "request_roomid":
+                    if(winobj_chat) {
+                        let reqans="";
+                        if(pageconfig.participants){if(pageconfig.participants[loginUser.email]){
+                            reqans=pageconfig.participants[loginUser.email].roomid;
+                        }}
+                        if(!reqans)reqans="";
+                        mypostWinMessage(winobj_chat,"roomid", reqans ); 
+                        console.log("[Info] reply Message [roomkey] : " );
+                    }
+                    break;
+                  case "request_participants":
+                    if(winobj_chat) {
+                        mypostWinMessage(winobj_chat,"participants",pageconfig.participants);
+                        console.log("[Info] reply Message [participants]  " );
+                    }
+                    break;
+                  case "request_useremail":
+                    mypostWinMessage(event.source,"useremail", loginUser.email );
+                    console.log("[Info] reply Message [useremail] : "+ loginUser.email );
                     break;
                   
                   default:
@@ -524,14 +552,27 @@ function mypostWinMessage(tgtwin,key,data=""){
 // ------------------------------------
 // ---------- 以下、テスト用 ----------
 function myTest(){
+    if(1==1){return 0;}
+    
     const loginUser = window.parent.fb_getLoginUser();
     tgtElem = document.getElementById("forTest");
     if(tgtElem){
-        let msg="";
-        tgtElem.innerHTML = msg;
+        let dispContents="";
+        
+        dispContents +=`<input type="button" id="hogehoge" value="test" onclick="myTestFunc()">`;
+        //----
+        tgtElem.innerHTML = dispContents;
     }
 }
-
-
+function myTestFunc(){
+    let msg="";
+    
+    for(let key in pageconfig.participants){
+        let elm=pageconfig.participants[key];
+        msg += (key+"\n");
+    }
+    
+    alert( msg );
+}
 //***********  Export ***************
 

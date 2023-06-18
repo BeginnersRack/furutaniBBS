@@ -1,3 +1,7 @@
+import { HtmlElements_comment,createHtmlElem_commentForEdit } from "./bbs_comment_m.js";
+import { myAryNormalize , myAryCmp , createHtmlElement_button } from "./common.js";
+
+// -----
 const HtmlElement_myTitleSpanId ="bbsThread_title";
 const HtmlElement_myTtlInfoDivId ="bbsThread_Infos";
 const HtmlElement_myDetailsDivId ="bbsThread_Details";
@@ -10,12 +14,15 @@ const HtmlElement_myVoteDivId ="bbsThread_vote";
 const HtmlElement_myThreadModifyDivId ="bbsThread_modify";
 
 //-- 以下、JavaScript内で生成するもの
-const HtmlElement_myNewDetailsTextareaId ="bbsComment_NewDetailsText";
 const HtmlElement_mybutton_submitComment_BtnId ="button_submitComment";
 const HtmlElement_createNewCommentBtn ="button_createNewComment";
 
 // ------------------------
-const c_threadtypeAry = {proposal:"提案",question:"教えて",share:"共有",report:"報告"};
+const BBS_Configs={};
+
+// ------------------------------- コメント表示
+const expandDirection = -1; // 0:順方向(古いものから)  -1:逆方向(新しいものから)
+const expandNumber = 10;      // 1頁あたりの表示行数
 
 // ----------------------------------
 const indexedDbName = "furutaniBBS";
@@ -31,6 +38,17 @@ async function func_iframeOnload(){ // iframeの親から、onloadイベント�
     let urlOptionsAry = window.parent.getUrloptions(window.location.search);
     pageconfig.bbsCode = urlOptionsAry["b"];
     pageconfig.threadCode = urlOptionsAry["t"];
+    
+    const confAry = await import('./'+pageconfig.bbsCode+'.js');
+    if(confAry){
+        if(confAry.PM_BBSconfigs){
+            BBS_Configs.c_bbsCode = confAry.PM_BBSconfigs.c_bbsCode;
+            //--
+            BBS_Configs.c_threadtypeAry = confAry.PM_BBSconfigs.c_threadtypeAry;
+            if(!BBS_Configs.c_threadtypeAry) BBS_Configs.c_threadtypeAry = {proposal:"提案",question:"教えて",share:"共有",report:"報告"};
+            
+        }
+    } 
     
     let tgtElem;
     // --
@@ -73,7 +91,7 @@ async function func_iframeOnload(){ // iframeの親から、onloadイベント�
     dispThreadInfos(0);
     dispDetails();
     
-    dispBBSList();
+    dispBBSList(); //コメント
     dispBBSControllBtn();
     
     dispVoteCtrl();
@@ -122,6 +140,7 @@ function mySystemIndicatorFunc_create(key="",flg=false,msg=""){
     }
 }
 
+window.moveFramePage = moveFramePage;
 function moveFramePage(pagename,commentCode="",threadCode=(pageconfig.threadCode || ""),bbsCode=(pageconfig.bbsCode || "BBS01") ){
     let opt={};
     if(bbsCode)    opt["b"]=bbsCode;
@@ -132,12 +151,11 @@ function moveFramePage(pagename,commentCode="",threadCode=(pageconfig.threadCode
 
 
 
+
 // -------------------------------
-const expandDirection = -1; // 0:順方向(古いものから)  -1:逆方向(新しいものから)
-const expandNumber = 1;      // 1頁あたりの表示行数
 let counterOfPageNumber = 0; // 表示頁数(最初は０)
-// -------------------------------
-async function dispBBSList(){
+
+async function dispBBSList(){ 
     let tgtElem = document.getElementById(HtmlElement_myTableDivId);
     if(!tgtElem){return;}
     
@@ -146,8 +164,8 @@ async function dispBBSList(){
     let dispContents="";
     //----------------
     dispContents+="コメント一覧<br />";
-    dispContents+="<table width=100%>";
-    dispContents+="<tr> <th>種別/タイトル</th> <th>内容</th> <th>投稿者</th> <th>投稿日</th> </tr>";
+    dispContents+="<table width=100% border='1'>";
+    dispContents+="<tr> <th width='120px'>区分/タイトル</th> <th>内容</th> <th width='200px'>投稿者</th> <th width='200px'>投稿日</th> </tr>";
     
     let itempos = counterOfPageNumber * expandNumber; //1件目を0と数える
     let itemnumber = expandNumber;
@@ -168,7 +186,7 @@ async function dispBBSList(){
         let strA =`<a href="javascript:moveFramePage('bbs_comment','${fsPKey}')">${linktitle}</a>`;
         dispContents += `<td>${strA}</td>`;
         
-        dispContents += `<td>${tgtdoc.details}</td>`;
+        dispContents += `<td>${tgtdoc.details.replace( /\n/g ,"<br />")}</td>`; 
         
         dispContents += `<td>${tgtdoc.ownername}</td>`;
         
@@ -237,7 +255,7 @@ async function dispThreadInfos(editmode=false){
     
     dispContents+="<tr><td>概要</td><td>";
     if(!editmode){
-        dispContents+= threadDoc.overview;
+        dispContents+= (threadDoc.overview).replace( /\n/g ,"<br />");
     }else{
         dispContents+=`<textarea id="ThreadInfoInput_overview" style="width:100%; height:80px;">`;
         dispContents+= threadDoc.overview +`</textarea>`;
@@ -261,16 +279,20 @@ async function dispThreadInfos(editmode=false){
     }
     dispContents+= "</td></tr>";
     
-    dispContents+="<tr><td>区分</td><td>";
+    dispContents+="<tr><td>スレッド区分</td><td>";
     if(!editmode){
-        dispContents+= threadDoc.threadtype;
-        if(threadDoc.hideflg){ dispContents+= (" 非公開中：["+threadDoc.hideflg+"]"); }
+        if(threadDoc.threadtype in BBS_Configs.c_threadtypeAry){
+            dispContents+= BBS_Configs.c_threadtypeAry[threadDoc.threadtype];
+        }else{
+            dispContents+= threadDoc.threadtype;
+        }
+        if(threadDoc.hideflg){ dispContents+= (" 　 非公開中：["+threadDoc.hideflg+"]"); }
     }else{
         dispContents+=`<select id="ThreadInfoInput_threadtype" name="threadtype">`;
-        for(let key in c_threadtypeAry){
+        for(let key in BBS_Configs.c_threadtypeAry){
             dispContents+= `<option value="`+key+`"`;
             if(threadDoc.threadtype==key) dispContents+=" selected";
-            dispContents+= `>`+c_threadtypeAry[key]+`</option>`;
+            dispContents+= `>`+BBS_Configs.c_threadtypeAry[key]+`</option>`;
         }
         dispContents+=`</select>　　`;
         
@@ -294,7 +316,7 @@ async function dispThreadInfos(editmode=false){
         dispContents+=`">`;
         dispContents+=`<label><input type="checkbox" name="ThreadInfoInput_posttitles_free" value="free" `;
         if(threadCnf.post_titles){if(threadCnf.post_titles.indexOf("")>=0){ dispContents+=`checked`; }}
-        dispContents+=` />自由記入を許可</label>`;
+        dispContents+=` />自由記入(タイトル入力)を許可</label>`;
         dispContents+=`<br />`;
         
         
@@ -432,7 +454,7 @@ async function updateThreadInfo_preExec(){
         }
     }
     
-    //       
+    //  array は custom object では firestoreに登録できない。 pure JavaScript objects である必要がある。
 
 
 
@@ -472,7 +494,7 @@ async function updateThreadInfo_preExec(){
             
                 if(myAryCmp(newIds,threadCnf.post_titles)){
                     nochangeflg=0;
-                    docdata1.post_titles = newIds;
+                    docdata2.post_titles = newIds;
                 }
         //    }
     }
@@ -516,13 +538,13 @@ async function updateThreadInfo_exec( newdocdata1 ,newdocdata2 ){
     // ----------
     let flgOk=0;
     try {
-        let try1=0;
+        let try2=0;
         if(Object.keys(newdocdata2).length>0){
-            let try1p = window.parent.fb_updateDataOnFirestore(storeName+"/"+pageconfig.threadCode+"/contents" , "_system" , newdocdata2 );
-            try1 = await try1p;
+            let try2p = window.parent.fb_updateDataOnFirestore(storeName+"/"+pageconfig.threadCode+"/contents" , "_system" , newdocdata2 );
+            try2 = await try2p;   // スレッド文書の/contents/_systemを更新
         }
-        let try2p = window.parent.fb_updateDataOnFirestore(storeName , pageconfig.threadCode , newdocdata1 ); // 変更なくても更新日だけは更新する
-        let try2 = await try2p;
+        let try1p = window.parent.fb_updateDataOnFirestore(storeName , pageconfig.threadCode , newdocdata1 ); // 変更なくても更新日だけは更新する
+        let try1 = await try1p;   // スレッド文書を更新
         if(try1!==null){if(try2!==null){ flgOk=1; }}
     } catch(e){
         let msg="データの登録に失敗しました。";
@@ -576,7 +598,7 @@ async function dispVoteCtrl(){
             if(tgtdoc.ownerid){
                 let strVoteval = tgtdoc.vote;
                 if(strVoteval){
-                    strmem = tgtdoc.ownername+"("+tgtdoc.ownerid+")";
+                    let strmem = tgtdoc.ownername+"("+tgtdoc.ownerid+")";
                     if (strVoteval in voteRate) {
                         voteRate[strVoteval] += 1;
                         voteMember[strVoteval] += ("\n"+strmem);
@@ -635,11 +657,12 @@ async function dispVoteCtrl(){
     dispContents+="</tr>";
     
     for (let key in voteRate){
-        const cnt=voteRate[key];
+        let cnt=voteRate[key];
         const cntstr = "*".repeat(cnt);
         let ttl = key;
         if(adminFlg){
-            ttl=`<a href="javascript:alert('${voteMember[key]}')">` +ttl+"</a>";
+            // ttl=`<a href="javascript:alert('${voteMember[key]}')">` +ttl+"</a>";
+            cnt = `<a href="javascript:alert('${voteMember[key]}')">` +cnt+"</a>";
         }
         dispContents+=`<tr><td>${ttl}</td><td>${cnt}</td><td>${cntstr}</td></tr>`;
     }
@@ -787,6 +810,133 @@ function updateVoteSelect01_createDoc(newVoteVal){
 
 
 
+// =====================
+function setStyleRule(selector,propStr ,overWriteFlg=0){
+    const styles = document.head.getElementsByTagName('style');
+    let styleEl;
+    if(styles.length==0){
+        styleEl = document.createElement("style");
+        document.head.appendChild(styleEl);
+    }else{
+        styleEl = styles[0];
+    }
+    const styleSheet = styleEl.sheet;
+    
+    let stylesAry = styleSheet.cssRules;
+    let flg=0;
+    for(let i=0;i<stylesAry.length;i++){
+        if(stylesAry[i].selsese == selector){
+            flg++;
+            if(overWriteFlg){ styleSheet.deleteRule( i ); }
+        }
+    }
+    if(flg==0 || overWriteFlg){
+        styleSheet.insertRule(`${selector}{${propStr}}` , styleSheet.cssRules.length );
+    }
+
+}
+function setDispInfoToolToInputText(elem){
+    if(!elem)return 0;
+    
+    
+    // 指定されたエレメントと同じ位置に配置された <div class="tooltip"></div> を検索
+    const tooltipAry = elem.parentNode.querySelectorAll('.tooltip');
+    if(!tooltipAry) return 0;
+    if(tooltipAry.length==0) return 0;
+    
+    
+    tooltipAry.forEach((tooltip) => {
+        
+        const elem_parent = tooltip.parentNode;
+        elem_parent.style.position = "relative"
+        // elemの親にあたる要素(div)のstyleを position:relative; とする：重ね合わせ
+        
+        const tgt_id = tooltip.id ? tooltip.id : "";
+        const tgt_keyselector = tgt_id ? ("#"+tgt_id) : ".tooltip";
+        
+        if(!getStyleRule(tgt_keyselector)){
+            
+            const allow_type = !tooltip.dataset ? "up" : (tooltip.dataset.allow ? tooltip.dataset.allow : "up");
+            
+            
+            let bordersize = parseInt( ((tooltip.dataset && tooltip.dataset.size ) ? tooltip.dataset.size  :0) ,10);
+            if(bordersize<=0)bordersize=12;
+            
+            let dpos_top = parseInt( ((tooltip.dataset && tooltip.dataset.top ) ? tooltip.dataset.top  :0) ,10);
+            let dpos_left= parseInt( ((tooltip.dataset && tooltip.dataset.left) ? tooltip.dataset.left :0) ,10);
+            
+            let bpos_top = 0;
+            let bpos_left =0;
+            let mpos_top = 0;
+            let mpos_left =0;
+            let strBorder ="";
+            switch (allow_type){
+                case "up":
+                    mpos_top =  40;
+                    mpos_left=  0;
+                    strBorder ="bottom";    // ☒のうちの1辺だけを表示させる
+                    bpos_top = -20; // mposからの相対移動量
+                    bpos_left=  20;
+                  break;
+                default:
+                    mpos_top = -30;
+                    mpos_left= 0;
+                    strBorder ="right";
+                    bpos_top = 15;
+                    bpos_left= -20;
+                  break;
+            }
+            
+            // -- スタイルを定義 (before)--
+            let propStr ="";
+            
+            propStr  = "content: '';";
+            propStr += "position:absolute;";
+            
+            propStr += "border:"+bordersize.toString()+"px solid transparent;";    // △を表示させるため、サイズ24の☒を生成して4辺を透明に指定
+            propStr += "top:"+(bpos_top).toString()+"px;";
+            propStr += "left:"+(bpos_left).toString()+"px;";
+            propStr += "border-"+strBorder+":"+bordersize.toString()+"px solid #808080;";   // ☒のうちの1辺だけを表示させる
+            setStyleRule(tgt_keyselector+":before",propStr);
+            
+            
+            // -- スタイルを定義 --
+            propStr  = "position:absolute;";
+            propStr += "background-color:#808080;";
+            propStr += "color:white; font-size:0.8em;";  // 文字色
+            propStr += "border-radius:0.5em; padding:"+(bordersize-2).toString()+"px;";
+            propStr += "margin:-0.8em 0.5em 0 1em;";
+            propStr += "top:"+(mpos_top+dpos_top).toString()+"px;";
+            propStr += "left:"+(mpos_left+dpos_left).toString()+"px;";
+            propStr += "display:none;";    // 初期状態では非表示に指定
+            
+            setStyleRule( tgt_keyselector ,propStr);
+            
+        }
+    });
+    
+    
+    
+    // --イベントを設置--
+    elem.onfocus = function () {
+        let tooltip = this.parentNode.querySelector('.tooltip');
+        tooltip.style.display = 'inline-block';
+    };
+    elem.onblur = function () {
+        let tooltip = this.parentNode.querySelector('.tooltip');
+        tooltip.style.display = 'none';
+    };
+    
+}
+function getStyleRule(name) {
+  for(var i=0; i<document.styleSheets.length; i++) {
+    let sheet = document.styleSheets[i];
+    for (let ix=0; ix<sheet.cssRules.length; ix++) {
+        if (sheet.cssRules[ix].selectorText == name) return sheet.cssRules[ix].style;
+    }
+  }
+  return null;
+}
 
 // =====================
 let maxsortval=0;
@@ -820,13 +970,25 @@ async function dispDetails(){
         for(let key in keylist){
             let tgtdoc = data[keylist[key]];
             
-            dispContents+=`<tr> <td> ${tgtdoc.details}  </td>`;
+            if(tgtdoc.chaptertitle){
+              dispContents+=`<tr> <td colspan="2"><big><big><strong> ${tgtdoc.chaptertitle}  </strong></big></big></td></tr>`;
+            }
             
+            const dt_details = tgtdoc.details.replace( /\n/g ,"<br />");
+            dispContents+=`<tr> <td> ${dt_details}  </td>`;
             dispContents+=`<td>`+ updateThread_sw(tgtdoc.primaryKey) +`</td>`;
             dispContents+=`</tr>`;
             
-            if(tgtdoc.sort){if(Number.isFinite(tgtdoc.sort)){if(maxsortval<tgtdoc.sort){maxsortval=tgtdoc.sort;}}}
             
+            if(tgtdoc.imagelink){
+              dispContents+=`<tr><td><img src="`+tgtdoc.imagelink+`"`;   // max-height: 300px;
+              dispContents+=` style="display: block; margin: auto; resize: auto;`;
+              if(tgtdoc.imageheight){  dispContents+=` height:`+(tgtdoc.imageheight)+`px;`;  }
+              dispContents+=`"></td><td></td></tr>`;
+            }
+            
+            //---
+            if(tgtdoc.sort){if(Number.isFinite(tgtdoc.sort)){if(maxsortval<tgtdoc.sort){maxsortval=tgtdoc.sort;}}}
         }
         
         if (pageconfig.threadDocInfo.ownerids){
@@ -890,8 +1052,20 @@ async function updateThread_disp(strId){
         contentDoc.sort= maxsortval + 10;
     }
     
+    dispContents+=`章タイトル：<input type="text" id="updateThread_disp_chapterTitle" name="chapterTitle" maxlength="100" size="40" value="`;
+    dispContents+= contentDoc.chaptertitle +`"></input></ br>`;
     dispContents+=`<textarea id="updateThread_disp_textarea" style="width:100%; height:80px;">`;
     dispContents+= contentDoc.details +`</textarea>`;
+    dispContents+=`添付画像Link：　Height `; 
+    dispContents+=`<span><input type="text" id="updateThread_disp_imageheight" name="imageheight" maxlength="6" size="7" value="`;
+    dispContents+=   (contentDoc.imageheight ? contentDoc.imageheight : "") +`"></input> `;
+    dispContents+=  `<div><div class="tooltip" id="tooltip_imagelink_height" data-allow="left" data-left="260">`; 
+    dispContents+=  `画像サイズを高さで指定します。指定ないときは原寸表示します。</div></div></span> `; 
+    dispContents+=`<span>`
+    dispContents+= ` <div><div class="tooltip" data-allow="up">外部サイトの画像URLを指定します。OneDrive保存の画像の場合は「埋め込み」でURLを取得してください</div></div>`
+    dispContents+= `<input type="text" id="updateThread_disp_imagelink" name="imagelink" maxlength="300" size="120" value="`;
+    dispContents+=  (contentDoc.imagelink ? contentDoc.imagelink : "") +`" placeholder="画像のURL / 埋め込みパス"></input> `;
+    dispContents+=`</span>`;
     dispContents+=`<input type="button" value="`+strBtnVal+`" onclick="updateThread_preExec('`+strId+`');" />`;
     dispContents+=`　表示順:<input type="text" id="updateThread_disp_sortval" name="sort" maxlength="4" size="4" value="`+contentDoc.sort+`">`;
     dispContents += `　<input type="button" value="入力を破棄して閉じる" onclick="updateThread_hide();" />`;
@@ -900,6 +1074,14 @@ async function updateThread_disp(strId){
     tgtElem.innerHTML="";
     tgtElem.insertAdjacentHTML('beforeend', dispContents );
     tgtElem.style.display ="block";
+    
+    let tgtElem_i;  // Popup ToolTipを設定
+    tgtElem_i = document.getElementById("updateThread_disp_imagelink");
+    if(tgtElem_i){  setDispInfoToolToInputText(tgtElem_i);  }
+    tgtElem_i = document.getElementById("updateThread_disp_imageheight");
+    if(tgtElem_i){  setDispInfoToolToInputText(tgtElem_i);  }
+    
+    
     // ------
     let tgtElem_btn = document.getElementById(HtmlElement_createNewCommentBtn);
     if(tgtElem_btn){ tgtElem_btn.disabled=true; }
@@ -908,11 +1090,11 @@ async function updateThread_disp(strId){
     let tgtElem_BtnForCommentOpen = document.getElementById(HtmlElement_createNewCommentBtn);
     if(tgtElem_BtnForCommentOpen){ tgtElem_BtnForCommentOpen.disabled=true; }
     
-    let tgtElem_BtnFoThreadInfoOpen;
-    tgtElem_BtnFoThreadInfoOpen = document.getElementById("button_ThreadInfo_modify");
-    if(tgtElem_BtnForThreadInfoOpen){ tgtElem_BtnFoThreadInfoOpen.disabled=true; }
-    tgtElem_BtnFoThreadInfoOpen = document.getElementById("button_modifyThread_New");
-    if(tgtElem_BtnForThreadInfoOpen){ tgtElem_BtnFoThreadInfoOpen.disabled=true; }
+    let tgtElem_BtnForThreadInfoOpen;
+    tgtElem_BtnForThreadInfoOpen = document.getElementById("button_ThreadInfo_modify");
+    if(tgtElem_BtnForThreadInfoOpen){ tgtElem_BtnForThreadInfoOpen.disabled=true; }
+    tgtElem_BtnForThreadInfoOpen = document.getElementById("button_modifyThread_New");
+    if(tgtElem_BtnForThreadInfoOpen){ tgtElem_BtnForThreadInfoOpen.disabled=true; }
 }
 function updateThread_hide(){
     let tgtElem = document.getElementById(HtmlElement_myThreadModifyDivId);
@@ -924,11 +1106,11 @@ function updateThread_hide(){
     let tgtElem_BtnForCommentOpen = document.getElementById(HtmlElement_createNewCommentBtn);
     if(tgtElem_BtnForCommentOpen){ tgtElem_BtnForCommentOpen.disabled=false; }
 
-    let tgtElem_BtnFoThreadInfoOpen;
-    tgtElem_BtnFoThreadInfoOpen = document.getElementById("button_ThreadInfo_modify");
-    if(tgtElem_BtnForThreadInfoOpen){ tgtElem_BtnFoThreadInfoOpen.disabled=false; }
-    tgtElem_BtnFoThreadInfoOpen = document.getElementById("button_modifyThread_New");
-    if(tgtElem_BtnForThreadInfoOpen){ tgtElem_BtnFoThreadInfoOpen.disabled=false; }
+    let tgtElem_BtnForThreadInfoOpen;
+    tgtElem_BtnForThreadInfoOpen = document.getElementById("button_ThreadInfo_modify");
+    if(tgtElem_BtnForThreadInfoOpen){ tgtElem_BtnForThreadInfoOpen.disabled=false; }
+    tgtElem_BtnForThreadInfoOpen = document.getElementById("button_modifyThread_New");
+    if(tgtElem_BtnForThreadInfoOpen){ tgtElem_BtnForThreadInfoOpen.disabled=false; }
 }
 async function updateThread_preExec(strId){
     let strMsg="";
@@ -956,6 +1138,33 @@ async function updateThread_preExec(strId){
     }
     
     
+    let strChapterTitle="";
+    const tgtElem_chapterTitle = document.getElementById("updateThread_disp_chapterTitle");
+    if(tgtElem_chapterTitle){
+        strChapterTitle = tgtElem_chapterTitle.value;
+    }
+    strChapterTitle = strChapterTitle.substring(0,threadContent_MaxDatasize);
+    
+    
+    let strImageLink="";
+    const tgtElem_strImageLink = document.getElementById("updateThread_disp_imagelink");
+    if(tgtElem_strImageLink){
+        strImageLink = tgtElem_strImageLink.value;
+    }
+    strImageLink = strImageLink.substring(0,300);
+    
+    let strImageHeight="";
+    const tgtElem_strImageHeight = document.getElementById("updateThread_disp_imageheight");
+    if(tgtElem_strImageHeight){
+        strImageHeight = tgtElem_strImageHeight.value;
+    }
+    const numImageHeight = parseInt(strImageHeight,10);
+    if(strImageHeight.trim()!="" && (numImageHeight!=numImageHeight || numImageHeight<=0)){
+        window.parent.fb_myconsolelog("[Info] 登録処理を中断：不正な値（画像サイズ）");
+        alert("サイズの指定["+strImageHeight+"]は無効です");
+        return null;
+    }
+    
     
     // --------------------------
     let contentDoc={};
@@ -968,16 +1177,29 @@ async function updateThread_preExec(strId){
     
     let docdata={};
     
-    // -- 本文 --
-    const strNewDetails=window.parent.escapeHtml(strMsg);
-    if(contentDoc.details != strNewDetails){ nochangeflg=0; }
-    docdata.details=strNewDetails;
-    
     // -- sort --
     if(contentDoc.sort != newsortval){ 
         nochangeflg=0;
         docdata.sort = newsortval;
     }
+    
+    // -- 本文 --
+    const strNewDetails=window.parent.escapeHtml(strMsg);
+    if(contentDoc.details != strNewDetails){ nochangeflg=0; }
+    docdata.details=strNewDetails;
+
+    // -- 章タイトル --
+    const strNewChapterTitle=window.parent.escapeHtml(strChapterTitle);
+    if(contentDoc.chaptertitle != strNewChapterTitle){ nochangeflg=0; }
+    docdata.chaptertitle=strNewChapterTitle;
+
+    // -- 画像Link --
+    const strNewImageLink=window.parent.escapeHtml(strImageLink);
+    if(contentDoc.imagelink != strNewImageLink){ nochangeflg=0; }
+    docdata.imagelink=strNewImageLink;
+    if(contentDoc.imageheight != numImageHeight){ nochangeflg=0; }
+    docdata.imageheight = ( numImageHeight==numImageHeight ? numImageHeight : 0);
+
     
     // --------------
     if(strId!="" && nochangeflg){
@@ -1103,8 +1325,9 @@ function open_createNewComment(){
 
     let tgtElem_newInput = document.getElementById(HtmlElement_myNewDetailsDivId);
     if(tgtElem_newInput){
-        let dispContents="";
-        dispContents+=`<textarea id="`+HtmlElement_myNewDetailsTextareaId+`" style="width:100%; height:80px;"></textarea>`;
+        let dispContents=createHtmlElem_commentForEdit(null); //  myNewDetailsTextareaId と myNewTitleTextId を含むHTLM
+        
+        // コントロール
         dispContents+=`<input type="button" id="`+HtmlElement_mybutton_submitComment_BtnId+`" value="コメント投稿" onclick="createNewComment_submit();" />`;
         dispContents += `　<input type="button" value="入力を破棄して閉じる" onclick="createNewComment_hide();" />`;
         // ---
@@ -1133,7 +1356,7 @@ function createNewComment_hide(){
 
 async function createNewComment_submit(){
     let strMsg="";
-    const tgtElem_newInput = document.getElementById(HtmlElement_myNewDetailsTextareaId);
+    const tgtElem_newInput = document.getElementById(HtmlElements_comment.myNewDetailsTextareaId);
     if(tgtElem_newInput){
         strMsg = tgtElem_newInput.value;
     }
@@ -1143,15 +1366,30 @@ async function createNewComment_submit(){
         alert("値を入力してください");
         return null;
     }
-    //------
+    
+    // --
+    let strTtl="";
+    const tgtElem_ttl = document.getElementById(HtmlElements_comment.myNewTitleTextId);
+    if(tgtElem_ttl){
+        strTtl = tgtElem_ttl.value ? tgtElem_ttl.value : "";
+    }
+    
+    //---------
     const loginUser = window.parent.fb_getLoginUser();
     const strdbpath = "BulletinBoardList/"+pageconfig.bbsCode+"/threadList/"+pageconfig.threadCode+"/discussion";
 
     let docdata={};
+    
+    // -- Title --
+    const newtitle = window.parent.escapeHtml( strTtl );
+    docdata.titlecategory=newtitle;
+    
+    // -- 本文 --
     const strNewDetails=window.parent.escapeHtml(strMsg);
     docdata.details = strNewDetails;
     docdata.details_old="";
     
+    // -- 他 --
     docdata.ownerids = [loginUser.email];
     docdata.ownername = loginUser.displayName;
     
@@ -1185,6 +1423,10 @@ async function createNewComment_submit(){
         
         func_expandPageNext(0);
     }
+    
+    // ---
+    createNewComment_hide();
+    setTimeout( dispBBSList ,100);
     
 }
 
@@ -1255,4 +1497,18 @@ function mytest(msg){
 }
 
 //***********  Export ***************
+
+window.func_iframeOnload = func_iframeOnload;
+window.updateThreadInfo_preExec = updateThreadInfo_preExec;
+window.dispThreadInfos  = dispThreadInfos;
+window.updateVoteSelect01  = updateVoteSelect01;
+window.updateThread_disp  = updateThread_disp;
+window.updateThread_preExec  = updateThread_preExec;
+window.updateThread_hide  = updateThread_hide;
+window.func_expandPageNext  = func_expandPageNext;
+window.open_createNewComment  = open_createNewComment;
+window.createNewComment_submit  =createNewComment_submit ;
+window.createNewComment_hide  =createNewComment_hide ;
+
+
 

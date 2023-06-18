@@ -7,8 +7,9 @@
 
     <!-- <script defer src="/__/firebase/init.js?useEmulator=true"></script> -->
     <script type="module" src="./bundle.js"></script>
-    <script src="./common.js"></script>
-    <script src="./index.js"></script>
+    <!-- <script> import('./index.js').then((MyModule_index) => { MyModule_index.firstpage(); }); </script> -->
+    <script> import('./common.js').then((MyModule_common) => { window.createHtmlElement_button = MyModule_common.createHtmlElement_button; }); </script> 
+    <script src="./index.js" type="text/javascript"></script> 
     <script src="./index_m.js" type="module" ></script> <!-- forTest -->
 
     <link rel="stylesheet" href="./index.css"> 
@@ -17,10 +18,10 @@
   <body>
     
     
-    <div id="my_auth">Å@</div>
+    <div id="my_auth" style="height: 1.8em; line-height: 180%;"> </div>
     
     
-    <iframe id="iframe_main" onload="func_iframe_main_onload()" style="border: 1px solid"></iframe>
+    <iframe id="iframe_main" style="border: 1px solid"></iframe>
     
     <a><span id="span_ConnectionMembersCount"></span></a>
   </body>

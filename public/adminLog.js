@@ -1,3 +1,6 @@
+// import {} from "./common.js";
+
+
 
 let elem_input;
 let elem_button;
@@ -22,7 +25,7 @@ function windowOnloadEvent(){
     
     if(elem_input){
         
-        tgtDate = new Date();
+        let tgtDate = new Date();
         //tgtDate.setFullYear(tgtDate.getFullYear() - 1);
         tgtDate.setMonth(tgtDate.getMonth() -3);
         //tgtDate.setDate(tgtDate.getDate() - 10);
@@ -35,7 +38,14 @@ function windowOnloadEvent(){
         elem_button.addEventListener("click", function(event){
             datelimit_reflect();
         });
-        //checkUserLogin();
+        
+        setTimeout( function(){
+           window.fb_getLoginUser(1);
+           checkUserLogin();
+        } ,1000);
+        
+        
+        
     }
 }
 function checkUserLogin(){
@@ -142,7 +152,7 @@ async function getAllLogDatas(){  // 返値  <0:取得失敗  >=0:配列に格�
                     if(!mykey){ anserrcnt++; console.log('lost data!');
                     }else{
                         //let onedt={};onedt[mykey]=dblogpath + key_member + "/" +key_log;oneuser.push(onedt);
-                        oneuser[mykey] = dblogpath + key_member + "/" +key_log;
+                        oneuser[(dblogpath + key_member + "/" +key_log)] = mykey;
                         
                         if(logData.usercode) username=logData.usercode;
                     }
@@ -179,7 +189,7 @@ function createHtmlTable(){
         let cnt1=0;
         let cnt2=0;
         for(let logKey of Object.keys(oneuser) ){
-            logKeyVal=Date.parse(logKey);
+            let logKeyVal=Date.parse(oneuser[logKey]);
             if(isNaN(logKeyVal))logKeyVal=0;
             if(logKeyVal<separateDate){
                 cnt1++; // 指定日より前
@@ -219,10 +229,10 @@ function execDeleteLogs(){
     for(let memberKey of Object.keys(logDataAry) ){
         let oneuser=logDataAry[memberKey];
         for(let logKey of Object.keys(oneuser) ){
-            logKeyVal=Date.parse(logKey);
+            let logKeyVal=Date.parse(oneuser[logKey]);
             if(isNaN(logKeyVal))logKeyVal=0;
             if(logKeyVal<separateDate){ // 指定日より前
-                updates[logKey]=null; //削除を指定
+                updates[logKey]=null; //削除を指定 (logKeyはデータパス)
             }
         }
     }
@@ -234,11 +244,13 @@ function execDeleteLogs(){
     
     //----------------
     // DB更新の実行
-    firebaseRTDB_update( firebaseRTDB_ref(firebaseRTDB_database) , updates 
-    ).then(() => {
+
+    //firebaseRTDB_update( firebaseRTDB_ref(firebaseRTDB_database) , updates )
+    window.fb_firebaseRTDB_update( updates ).then(() => {
           alert("削除しました！");
-    })
-    .catch((error) => {
+          logDataAry=null;
+          datelimit_reflect();
+    }).catch((error) => {
           alert(`[ERROR]データベースへの接続に失敗しました：${error.code}:${error.message}`);
     });
 }
@@ -295,4 +307,5 @@ function changeFormatDate(tgtDate0){
 }
 
 
-
+// ******* Export *********
+window.execDeleteLogs = execDeleteLogs;

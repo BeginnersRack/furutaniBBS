@@ -1,3 +1,7 @@
+//import { createHtmlElement_button } from "./common.js";
+    //   ※ Module読み込みさせる場合は、外から呼び出したいものにExport宣言が必要。
+
+// Scriptタグでの呼び出しを想定：こうすることで、ここで宣言した関数が windowオブジェクトとして使用可能になる。
 
 
 window.addEventListener("load", function(event) {
@@ -5,19 +9,30 @@ window.addEventListener("load", function(event) {
     
     
     firstpage();
+    // ** Module読み込みの場合、onload発火時点では、moduleのimport処理は完了していないことに注意。** defer
     
 });
 function firstpage(){
+    first_getLoginUser();
+}
+function first_getLoginUser(){
     let loginUser;
     try{
         loginUser = fb_getLoginUser(1);
+        first_changeIframeTarget();
     }catch(err){
-        setTimeout( firstpage , 500 );
+        setTimeout( first_getLoginUser , 100 );console.log("L-skip");
         return;
     };
-    
-    window.changeIframeTarget_main('home');
-    
+}
+function first_changeIframeTarget(){
+    const tgtElem = document.getElementById("iframe_main");
+    if(tgtElem){
+        tgtElem.addEventListener("load", function(event) {
+            func_iframe_main_onload();
+        });
+        changeIframeTarget_main('home');
+    }
 }
 
 
@@ -331,3 +346,4 @@ function dispConnectionMembersData(){
 
 //***********  他   ***************
 // -----------------------------------------
+

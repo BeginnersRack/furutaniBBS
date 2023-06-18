@@ -141,14 +141,14 @@ async function getDataFromFirestoreDb(refPath , startpos,datalength , blockModeF
             posMin=startpos;
             posMax=startpos+datalength-1;
             if(posMin<0){if(posMax>=0 || datalength==0 ){ posMax=-1; }}
-            cntpos=-1;//スタート位置0の1つ前
+            cntpos=-1;//スタート位置(startpos=0)の1つ前=-1
         } else {
             incrim=-1;
             cntBlock=-1;
             posMax=startpos;
             posMin=posMax+datalength+1;
             if(posMax>=0){if(posMin<0){ posMin=0; }}
-            cntpos=0;//スタート位置-1の1つ前
+            cntpos=0;//スタート位置(startpos=-1)の1つ前=0
         }
         
         myconsolelog(`[Info] required firestore data ( ${posMin} ～ ${posMax} ) : ${refPath}`);
@@ -160,7 +160,7 @@ async function getDataFromFirestoreDb(refPath , startpos,datalength , blockModeF
             cntBlock=0;
             posMin=0;
             posMax=-1;
-            cntpos=-1;//スタート位置0の1つ前
+            cntpos=-1;//スタート位置(startpos=0)の1つ前=-1
     }
     //---
     let ans={};
@@ -190,13 +190,13 @@ async function getDataFromFirestoreDb(refPath , startpos,datalength , blockModeF
                 
                 if(dataary.length==0){
                     let maxIndx=maxSortIndexAry[refPath]; // let maxIndx=await getMaxOfSortIndex(refPath); //
-                    if(maxIndx<=param3[2]){ // let endPosition=param3[2]
+                    if(maxIndx<param3[2]){ // let endPosition=param3[2]
                         continueFlg=0;
                     }
                 }else{
                     for(let keys of dataary){
                         cntpos+=incrim;
-                        if((cntpos>=posMin)&&((cntpos<=posMax)||(posMax<0))){
+                        if((cntpos>=posMin)&&(cntpos<=posMax)){    //   (cntpos<=posMax)||(posMax<0)
                             ans[cntpos] = await getdataFromIndexedDb_fs(indexedDbName,indexDbObjectStoreName, keys[1] ); 
                             if(!ans[cntpos]){
                                 myconsolelog("[Error] indexedDBからデータを取得できません："+refPath+" - "+keys[1]);
@@ -208,13 +208,15 @@ async function getDataFromFirestoreDb(refPath , startpos,datalength , blockModeF
                     }
                 }
             }
-            let needNextFlg = (incrim==1)?((cntpos<posMax)||(posMax<0)):(cntpos>posMin);
-            if(needNextFlg){
-                cntBlock_bk=cntBlock;
-                cntBlock+=incrim;
-                if(cntBlock<0)continueFlg=0;
-            }else{
-                continueFlg=0;
+            if(continueFlg){
+                let needNextFlg = (incrim==1)?(cntpos<=posMax):(cntpos>=posMin);  //  (cntpos<=posMax)||(posMax<0)
+                if(needNextFlg){
+                    cntBlock_bk=cntBlock;
+                    cntBlock+=incrim;
+                    if(cntBlock<0)continueFlg=0;
+                }else{
+                    continueFlg=0;
+                }
             }
         }
     } while (continueFlg);
@@ -996,7 +998,11 @@ async function updateDataOnFirestore(refPath ,dockey , orgdata ,modifiedTimeFlg=
     // ---送信用オブジェクト（単純な連想配列オブジェクトであることが必要）
     let submitAry = {};
     for (let key in orgdata) {
-        submitAry[key] = orgdata[key];
+        if(Array.isArray(orgdata[key])){ // array は custom object では firestoreに登録できない。 pure JavaScript objects である必要がある。
+            submitAry[key] = [ ...(orgdata[key]) ];
+        }else{
+            submitAry[key] = orgdata[key];
+        }
     }
     // --- 更新日時の設定
     submitAry.modified_sys = fsdb_serverTimestamp();

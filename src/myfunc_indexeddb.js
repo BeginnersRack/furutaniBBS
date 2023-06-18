@@ -52,13 +52,23 @@ function myopenIndexedDb(dbname){
                     switch(event.oldVersion){
                      default:
                      case 0:
+                        let storeMR = idb.createObjectStore("MeetingRooms",{keyPath:null ,autoIncrement:false});
+                        
                         let store01 = idb.createObjectStore("BulletinBoardList/BBS01/threadList",{keyPath:null ,autoIncrement:false});
                         store01.createIndex("sortIndex",['sortIndex','sort'],{unique:false,multiEntry:false});
                         //let store01D= idb.createObjectStore("BulletinBoardList/BBS01/threadDetails",{keyPath:null ,autoIncrement:false});
                         //store01D.createIndex("postIndex","['threadId_post','postid']",{unique:false,multiEntry:false});
                         //store01D.createIndex("voteIndex","['threadId_vote','ownerid']",{unique:false,multiEntry:false});
                         
-                        let storeMR1 = idb.createObjectStore("MeetingRooms",{keyPath:null ,autoIncrement:false});
+                        
+                        let store02 = idb.createObjectStore("BulletinBoardList/BBS02/threadList",{keyPath:null ,autoIncrement:false});
+                        store02.createIndex("sortIndex",['sortIndex','sort'],{unique:false,multiEntry:false});
+                        
+                        
+                        let store03 = idb.createObjectStore("BulletinBoardList/BBS03/threadList",{keyPath:null ,autoIncrement:false});
+                        store03.createIndex("sortIndex",['sortIndex','sort'],{unique:false,multiEntry:false});
+                        
+                        
                      
                     }
                   break;

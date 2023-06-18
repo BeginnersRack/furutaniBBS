@@ -10,7 +10,7 @@ let myconsolelog;
 
 
 // ===========================
-function myTypeof(obj){
+export function myTypeof(obj){
     return Object.prototype.toString.call(obj);
 }
 
@@ -18,7 +18,7 @@ function myTypeof(obj){
 //---- 配列整形 ----
 //------ 引数１が文字列の場合は、改行、カンマ、ｾﾐｺﾛﾝで区切る
 //------ 空白は削除、重複も削除する。
-function myAryNormalize(orgdata){
+export function myAryNormalize(orgdata){
     let ansAry=[];
     
     let tgtAry0;
@@ -45,7 +45,7 @@ function myAryNormalize(orgdata){
 }
 //---- 配列比較 ---- 一致すれば０を返す
 //------ 引数１が引数２と一致しているかを検査する（重複や順序は無視）。
-function myAryCmp(orgary,cmpary){
+export function myAryCmp(orgary,cmpary){
     let ans=-1;
     //--一致チェック
     if(!orgary || Object.prototype.toString.call(orgary)!="[object Array]"){ return ans; }
@@ -68,7 +68,7 @@ function myAryCmp(orgary,cmpary){
 
 
 // -----------------------------------------
-function createHtmlElement_button(strValue,strFunc,strPreElemIdName,flgPreElemPos=0,baseDocument=null){
+export function createHtmlElement_button(strValue,strFunc,strPreElemIdName,flgPreElemPos=0,baseDocument=null){
 //strValue : ボタン名
 //strFunc  : 実行JSコード
 //strPreElemIdName: ボタン挿入位置の基準エレメントID

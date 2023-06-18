@@ -9,32 +9,37 @@
 
   </head>
   <body>
+    <input type="button" value="home" onclick="window.parent.changeIframeTarget_main('home');"> </br>
+    
     <h1>MyAccount</h1>
     
     <div id="myAccount_infoTable"></div>
     
+    <hr>
+    
+    logout <input type="button" value="サインアウト" onclick="window.parent.fb_signOut()"> </br>
+    再認証(mail) <input type="button" value="再認証(mail)" onclick="window.parent.signUp_sendEmailVerification()"> </br>
+    パスワード変更 <input type="button" value="パスワード変更" onclick="window.parent.signUp_changeAuthPassword()"> </br>
+    
+    名前の変更 <input type="button" value="名前変更" onclick="window.parent.signUp_changeAuthUserName()"> </br>
+    
+    <hr>
+    
+    前回のアクセス記録の確認 <input type="button" value="last" onclick="myLastAccessInfo();"> </br>
     
     
     
-    
-    logout</br>
-    再認証(mail)</br>
-    パスワード変更</br>
-    
-    
-     <input type="button" value="パスワード変更" onclick="window.parent.signUp_changeAuthPassword()">
-     <input type="button" value="名前変更" onclick="window.parent.signUp_changeAuthUserName()">
-     <input type="button" value="再認証(mail)" onclick="window.parent.signUp_sendEmailVerification()">
+    <hr>
+ 
      
-     </br>
-     <input type="button" value="サインアウト" onclick="window.parent.fb_signOut()">
      
-     </br>
-     <input type="button" value="home" onclick="window.parent.changeIframeTarget_main('home');">
-     <input type="button" value="last" onclick="myLastAccessInfo();">
-     </br> <input type="button" value="log-Admin" onclick="alert();">
-     </br> <input type="button" value="clear indexedDB" onclick="indexedDB_deleteAll();">
-     </br> <input type="button" value="clear localstorage" onclick="localstorage_deleteAll();">
+     ローカルデータの管理<br />
+     <input type="button" value="clear indexedDB" onclick="indexedDB_deleteAll();"> </br>
+     <input type="button" value="clear localstorage" onclick="localstorage_deleteAll();"> </br> 
+     
+    <hr>
+     <!-- <input type="button" value="log-Admin" onclick="alert();"> </br> -->
+     
        <span id="forAdditional"></span>
      </br>
      </br>

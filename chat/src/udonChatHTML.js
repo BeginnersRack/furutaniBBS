@@ -4,25 +4,29 @@ import {G} from "./myGlobalParams.js";
 import { Ghtml  , c_elemEvent_input }  from "./udonChatHTML_elements.js";
 
 import { htmlElemInit_Voicerecognition } from "./udonChatHTML_VoiceRecognition.js";
-import { startMultiparty ,htmlElemInit_WebRTC ,quitAllConnection ,connectedDatasModifyFlg} from "./udonWebRTC.js";
+import { startMultiparty ,htmlElemInit_WebRTC ,quitAllConnection ,connectedDatasModifyFlg , changeParticipant} from "./udonWebRTC.js";
 import { htmlElemInit_MediaStream  } from "./udonMediaStream.js";
 import { htmlElemInit_RecordVoice  , mediaRecorder  } from "./udonRecordVoice.js";
 import { htmlElemInit_TextMessageChat , sendNewChatMessage } from "./udonTextMessageChat.js";
 import { htmlElemInit_MessageLog } from "./udonChatMessageLog.js";
 import { getCookie , setCookie } from "./myfunc_cookie.js";
-import { getReplyWinMessage,mypostWinMessage } from "./myfunc_windowMessage.js";
-
+import { getReplyWinMessage,mypostWinMessage ,parentWindowDatas ,standbyToStartReceiveWinMessage} from "./myfunc_windowMessage.js";
 
 
 
 
 // DOM要素の構築が終わった場合に呼ばれるイベント
 // - DOM要素に結びつく設定はこの中で行なう
-
-document.addEventListener('DOMContentLoaded', function() {  // <<< $(function() {
-    myOnload();
-})
+document.addEventListener('DOMContentLoaded', function() {  
+    setTimeout( myOnload , 10 );
+});
 async function myOnload(){
+  const skywayKey_promise = getReplyWinMessage("request_skywaykey","skywaykey"); //親画面からkeyを取得する
+  G.loginUser={}; // loginUser = window.parent.fb_getLoginUser();
+  if(!G.loginUser.email){
+      G.loginUser.email = await getReplyWinMessage("request_useremail","useremail"); //親画面からkeyを取得する
+  }
+     
   Ghtml.elemStream_SW =  document.getElementById('my-stream_sw');
   Ghtml.elemStream_SW_Msg =  document.getElementById('my-stream_sw_message');
   Ghtml.elemVideo_STTS =  document.getElementById('my-video_status');
@@ -65,7 +69,6 @@ async function myOnload(){
   Ghtml.elemAddNewPeer_SW = document.getElementById("my-addNewPeer");
   Ghtml.elemText_AddNewPeerID = document.getElementById("peer-id-input");
 
-  
   
   
    //音声認識
@@ -156,12 +159,12 @@ async function myOnload(){
    
    // ======================================================
    
-   let strValue=getCookie("recentPeerId");
-   if(strValue){if(strValue!=""){
-      if(Ghtml.elemText_AddNewPeerID){
-          Ghtml.elemText_AddNewPeerID.value=strValue;
-      }
-   }}
+   //let strValue=getCookie("recentPeerId");
+   //if(strValue){if(strValue!=""){
+   //   if(Ghtml.elemText_AddNewPeerID){
+   //       Ghtml.elemText_AddNewPeerID.value=strValue;
+   //   }
+   //}}
    
    
    
@@ -169,12 +172,60 @@ async function myOnload(){
    // =============================
    // WebRTC 開始
    // =============================
-   let skywayKey = await getReplyWinMessage("skywaykey",""); //親画面からkeyを取得する
+   let skywayKey = await skywayKey_promise; //親画面からkeyを取得する
    startMultiparty(skywayKey);
    
    
-   mypostWinMessage("log","chatWindow stand by.")
+   //-----------
+   
+   let promiseAry=[];
+   promiseAry.push( getReplyWinMessage("request_roomlist","roomlist") );// parentWindowDatas.RoomList 取得
+   //promiseAry.push( getReplyWinMessage("request_roomid","roomid") ); // parentWindowDatas.RoomId 取得
+   promiseAry.push( getReplyWinMessage("request_participants","participants") ); // parentWindowDatas.participants 取得
+   await Promise.all(promiseAry);
+   
+   let cntLoop=0;
+   function changeParticipant0(){
+       if(parentWindowDatas.participants){
+           console.log("[Info] start "+cntLoop.toString()+" : changeParticipant. ");
+           changeParticipant();
+       }else{
+           cntLoop++;
+           if(cntLoop<20){
+               console.log("[???] pass "+cntLoop.toString()+" : changeParticipant. ");
+               setTimeout( changeParticipant0 ,100);
+           }
+       }
+   }
+   changeParticipant0();
+   
+   
+   mypostWinMessage("log","chatWindow stand by.");
+   // =============================
+   
+    const memberList = parentWindowDatas.participants;
+    
+    const recentRoomid0 = ( memberList[G.loginUser.email] ? memberList[G.loginUser.email].roomid : "");
+    const recentRoomid = (recentRoomid0 ? recentRoomid0 :"");
+    const recentRoomEnt0= ( memberList[G.loginUser.email] ? memberList[G.loginUser.email].enterflg : 0);
+    const recentRoomEnt= ( recentRoomEnt0 ? recentRoomEnt0 : 0);
+    
+    let recentRoomInfo = {}
+    if(recentRoomid){
+        recentRoomInfo = parentWindowDatas.RoomList[recentRoomid];
+    }else{
+        recentRoomInfo.roomname = "ロビー";
+        recentRoomInfo.information = "";
+        recentRoomInfo.expirationdate = "";
+        recentRoomInfo.ownername = "";
+    }
+    
+    let tgtelem = document.getElementById("roomname_p");
+    if(tgtelem){
+        tgtelem.innerHTML = "オンライン会議 "+recentRoomInfo.roomname;
+    }
 }
+
 
 
 

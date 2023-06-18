@@ -1,6 +1,6 @@
 const HtmlElement_myInfoDivId ="myAccount_infoTable";
 let HtmlElement_myInfoDiv = null;
-function func_iframeOnload(){ // iframeの親から、onloadイベントで呼び出される
+async function func_iframeOnload(){ // iframeの親から、onloadイベントで呼び出される
     HtmlElement_myInfoDiv = document.getElementById(HtmlElement_myInfoDivId);
 
     if(HtmlElement_myInfoDiv){
@@ -12,10 +12,10 @@ function func_iframeOnload(){ // iframeの親から、onloadイベントで呼�
             if(!loginUser.uid){
                 infoMessage += "not signin</br>";
             }else{
-                let msg ="ID : "+ loginUser.uid;
-                msg += "\n" + "email : "+loginUser.email + "  (";
-                if (loginUser.emailVerified){msg+="Verified.)";} else {msg+="not checked.)";}
-                msg += "\n" + "Name : "+loginUser.displayName;
+                let msg ="ID : "+ loginUser.uid + "<br />" ;
+                msg +=  "email : "+loginUser.email + "  (";
+                if (loginUser.emailVerified){msg+="Verified.) <br />";} else {msg+="not checked.) <br />";}
+                msg += "Name : "+loginUser.displayName+ "<br />";
                 
                 infoMessage += msg+"</br>";
             }
@@ -28,11 +28,73 @@ function func_iframeOnload(){ // iframeの親から、onloadイベントで呼�
     
     window.parent.createHtmlElement_button("AccessLog","dispMyAccessLogs()","forAdditional",0,this.document);
     
+    let pflg =await getPermissionFlg();
+    if(pflg>0){
+        let tgs="window.open('/adminLog.html', 'log-admin' );";
+        window.parent.createHtmlElement_button("Log-Admin", tgs ,"forAdditional",0,this.document);
+    }
+    
+    
+    
     
     // ----------for test--------
     // 名前 , 関数 , エレメントID , mode={0:中の末尾  1:並びの末尾(parentNode指定)  2:並びの次の位置},検索対象Document
-    window.parent.createHtmlElement_button("uuu","mytest()","forTest",0,this.document);
+    if(1==2){
+        window.parent.createHtmlElement_button("uuu","mytest()","forTest",0,this.document);
+    }
 };
+let getPermissionFlg = function() {
+    let permissionFlg = 0;
+    return async function() { // クロージャ関数
+        if(!permissionFlg){
+            let myuser = window.parent.fb_getcurrentUser();
+            if(myuser){
+                let flg = await checkPermission();
+                if(flg) { permissionFlg = 1; } else {permissionFlg=-1; }
+                
+            }else{
+                permissionFlg=-1;
+            }
+        }
+        return permissionFlg;
+    };
+}();
+async function checkPermission(){
+    let ans=false;
+    
+    let myuser = window.parent.fb_getcurrentUser();
+    let flg=0;
+    if(myuser){
+        flg=1;
+        if(!myuser.uid)flg=0;
+        if( myuser.isAnonymous)flg=0;
+        if(!myuser.emailVerified)flg=0;
+    }
+    
+    if(flg){
+        let dblogpath = "adminusers/";
+        const myQuery = {orderByKey:"",equalTo:myuser.uid};
+        
+        let snapshot=await window.parent.fb_getRTDBdatas_promise("once", dblogpath ,null,null,myQuery
+        ).then(function(snapshot){
+                console.log(`admin権限を確認：${myuser.uid}`);
+                ans=true;
+        }).catch(function(error){
+                console.log(`[ERROR]Logデータが取得できませんでした：${error.code}:${error.message}`);
+        });
+        
+        if(snapshot){
+            let adminflg = snapshot.val();
+            if(adminflg){
+                ans=true;
+            }
+        }
+    }
+    return ans;
+}
+
+
+
 
 
 function dispMyAccessLogs(){

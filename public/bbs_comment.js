@@ -1,3 +1,5 @@
+import { HtmlElements_comment,createHtmlElem_commentForEdit } from "./bbs_comment_m.js";
+
 //-- Htmlファイルで定義されているもの
 const HtmlElement_myTitleSpanId ="bbsThread_title";
 const HtmlElement_myThreadInfosDivId ="bbsThread_Infos";
@@ -6,12 +8,9 @@ const HtmlElement_myNewDetailsDivId ="bbsComment_NewDetails";
 const HtmlElement_myNewDetailsOldDivId ="bbsComment_Details_old";
 const HtmlElement_myControllDivId ="bbsComment_controll";
 const HtmlElement_mySystemMessage01SpanId ="SystemMessage01";
-
 //-- 以下、JavaScript内で生成するもの
-const HtmlElement_myNewDetailsTextareaId ="bbsComment_NewDetailsText";
-const HtmlElement_myNewTitleTextId ="bbsComment_NewTitleText";
 const HtmlElement_mybutton_submitComent_BtnId ="button_submitComment";
-
+const HtmlElement_myDetailsDispAreaId  ="bbsComment_DispDetails";
 
 //---
 const indexedDbName = "furutaniBBS";
@@ -122,81 +121,13 @@ async function dispDetails(){
     const ttl_defaultVal=(pageconfig.postData.titlecategory ? pageconfig.postData.titlecategory : "");
     tgtElem = document.getElementById(HtmlElement_myNewDetailsDivId);
     if(tgtElem){
-        let dispContents="";
-        
-        let dspTitleInput=-1;
-        let defaultvalue=-1;
-        let sel_defaultVal="";
-        const ttlary=pageconfig.threadConfig.post_titles;
-        if((ttlary)&&(ttlary.length>0)){
-            if(ttlary.length==1){
-                if(ttlary[0]==""){
-                    dspTitleInput=1;
-                }
-            }else{
-                if(ttl_defaultVal!=""){
-                    for(let i=0;i<ttlary.length;i++){
-                        if(ttl_defaultVal == (ttlary[i]?ttlary[i]:"")){
-                            defaultvalue=i;
-                        }
-                    }
-                }
-                if(defaultvalue<0){
-                    for(let i=0;i<ttlary.length;i++){
-                        if("" == (ttlary[i]?ttlary[i]:"")){
-                            defaultvalue=i;
-                        }
-                    }
-                }
-                if(defaultvalue<0){defaultvalue=0;}
-                
-                dispContents+=`<select id="`+HtmlElement_myNewTitleTextId+`_selector"`;
-                let strscr = `let tgtelm=document.getElementById("`+HtmlElement_myNewTitleTextId+`");`;
-                strscr += `if(tgtelm){tgtelm.value=this.options[this.value].text;}`;
-                dispContents+=` onchange='`+strscr+`'>`;
-                for(let i=0;i<ttlary.length;i++){
-                    let tgtopt = ttlary[i]?ttlary[i]:"";
-                    dispContents+=`<option value="`+i.toString()+`"`;
-                    if(tgtopt==""){
-                        dspTitleInput=i;
-                    }
-                    if(i==defaultvalue){
-                            dispContents+=` selected>`+tgtopt+`</option>`;
-                            sel_defaultVal = tgtopt;
-                    }else{
-                            dispContents+=`>`+tgtopt+`</option>`;
-                    }
-                }
-                dispContents+=`</select>`;
-            }
-        }
-        
-        let text_defaultVal=ttl_defaultVal; // タイトル初期値
-        if(dspTitleInput<0){if(sel_defaultVal!=""){
-            if(text_defaultVal != sel_defaultVal ){
-                window.parent.fb_myconsolelog("[Info] コメントの件名を自動変更します：["+text_defaultVal+"]→["+sel_defaultVal+"]");
-                text_defaultVal = sel_defaultVal;
-            }
-        }}
-        
-        dispContents+=`<input type="text" id="`+HtmlElement_myNewTitleTextId+`" name="name" minlength="4" maxlength="80" size="10"`;
-        dispContents+=` value="`+text_defaultVal+`"`;
-        if(dspTitleInput>=0){
-                dispContents+=`>`;
-        }else{
-                dispContents+=` style="display:none;">`;
-        }
-        
-        
-        
-        dispContents+=`<textarea id="`+HtmlElement_myNewDetailsTextareaId+`" style="width:100%; height:80px;">`;
-        dispContents+= pageconfig.postData.details +`</textarea>`;
+        let dispContents=createHtmlElem_commentForEdit(pageconfig); //  myNewDetailsTextareaId と myNewTitleTextId を含むHTLM
+
         dispContents+=`<input type="button" id="`+HtmlElement_mybutton_submitComent_BtnId+`" value="更新" />`;
-        
+        dispContents +=`　<input type="button" value="入力を破棄して閉じる" onclick="createNewComment_hide();" />`;
         // ----
         tgtElem.innerHTML ="";
         tgtElem.insertAdjacentHTML('beforeend', dispContents );
-        
         tgtElem.style.display = "none";
     }
     
@@ -205,7 +136,7 @@ async function dispDetails(){
     tgtElem = document.getElementById(HtmlElement_myDetailsDivId);
     if(tgtElem){
         let dispContents="";
-        dispContents+="<table width=100%>";
+        dispContents+="<table id='" +HtmlElement_myDetailsDispAreaId+ "' width=100%>";
         if((pageconfig.threadConfig.post_titles)&&(pageconfig.threadConfig.post_titles.length>0)){
             let strtitle= pageconfig.postData.titlecategory;
             dispContents+="<tr> <th>件名："+ (strtitle?strtitle:"  ") +`　 ${pageconfig.postData.ownername} </th>  </tr>`;
@@ -249,30 +180,58 @@ async function dispDetails(){
     
     //----
 }
+function createNewComment_hide(){
+    let tgtElem_newInput = document.getElementById(HtmlElement_myNewDetailsDivId);
+    if(tgtElem_newInput){
+        const BtnSubmit = document.getElementById(HtmlElement_mybutton_submitComent_BtnId);
+        if(BtnSubmit){
+            BtnSubmit.removeEventListener("click", updateComment_preExec );
+        }
+        
+        tgtElem_newInput.style.display ="none";
+        //tgtElem_newInput.innerHTML ="";
+    }
+    
+    
+    let tgtElem_Ctrl = document.getElementById(HtmlElement_myControllDivId);
+    if(tgtElem_Ctrl){
+        tgtElem_Ctrl.style.display ="block";
+    }
+    
+    let tgtElem_disp = document.getElementById(HtmlElement_myDetailsDispAreaId);
+    if(tgtElem_disp){
+        tgtElem_disp.style.display ="block";
+    }
+    
+    
+}
 
 
 function dispBBSControllBtn(){
-    let tgtElem = document.getElementById(HtmlElement_myControllDivId);
-    if(!tgtElem){return;}
+    let tgtElem_Ctrl = document.getElementById(HtmlElement_myControllDivId);
+    if(!tgtElem_Ctrl){return;}
     let loginUser = window.parent.fb_getLoginUser();
     
-    let dispContents="";
-    //----
+    const c_elmId="button_createNewThread";
     
-    if (pageconfig.postData.ownerids.indexOf(loginUser.email) >=0 ){
-        
-        dispContents+=`<input type="button" id="button_createNewThread" value="コメントを変更" onclick="updateComment();" />`;
-        
-        const BtnSubmit = document.getElementById(HtmlElement_mybutton_submitComent_BtnId);
-        if(BtnSubmit){
-            BtnSubmit.addEventListener("click",function(ev){ updateComment_preExec(); });
+    //----
+    let tgtFlg = document.getElementById(c_elmId);
+    if(tgtFlg){
+        tgtFlg.style.display ="block";
+    }else{
+        let dispContents="";
+        //----
+        if (pageconfig.postData.ownerids.indexOf(loginUser.email) >=0 ){
+            
+            dispContents+=`<input type="button" id="{$c_elmId}" value="コメントを変更" onclick="updateComment();" />`;
+            
         }
         
+        tgtElem_Ctrl.innerHTML ="";
+        tgtElem_Ctrl.insertAdjacentHTML('beforeend', dispContents );
     }
-    
-    //----
-    tgtElem.innerHTML ="";
-    tgtElem.insertAdjacentHTML('beforeend', dispContents );
+    //--
+
 }
 
 // ------------- コメントの更新登録 ---------------
@@ -289,14 +248,29 @@ function updateComment(){
     if(tgtElem_newInput){
         tgtElem_newInput.style.display ="block";
     }
+    
+    //    dispBBSControllBtn()
     let tgtElem_Ctrl = document.getElementById(HtmlElement_myControllDivId);
     if(tgtElem_Ctrl){
-        tgtElem_Ctrl.innerHTML ="";
+        tgtElem_Ctrl.style.display ="none";
+        // tgtElem_Ctrl.innerHTML ="";
     }
+
+    let tgtElem_disp = document.getElementById(HtmlElement_myDetailsDispAreaId);
+    if(tgtElem_disp){
+        tgtElem_disp.style.display ="none";
+    }
+    
+    const BtnSubmit = document.getElementById(HtmlElement_mybutton_submitComent_BtnId);
+    if(BtnSubmit){
+         BtnSubmit.removeEventListener("click", updateComment_preExec );
+         BtnSubmit.addEventListener("click", updateComment_preExec );
+    }
+    
 }
-function updateComment_preExec(){
+function updateComment_preExec(ev){
     let strMsg="";
-    const tgtElem_newInput = document.getElementById(HtmlElement_myNewDetailsTextareaId);
+    const tgtElem_newInput = document.getElementById(HtmlElements_comment.myNewDetailsTextareaId);
     if(tgtElem_newInput){
         strMsg = tgtElem_newInput.value;
     }
@@ -308,7 +282,7 @@ function updateComment_preExec(){
     }
     
     let strTtl="";
-    const tgtElem_ttl = document.getElementById(HtmlElement_myNewTitleTextId);
+    const tgtElem_ttl = document.getElementById(HtmlElements_comment.myNewTitleTextId);
     if(tgtElem_ttl){
         strTtl = tgtElem_ttl.value ? tgtElem_ttl.value : "";
     }
@@ -382,7 +356,9 @@ async function updateComment_exec(strTtl , strMsg){
         //opt["t"]=pageconfig.threadCode;
         //window.parent.changeIframeTarget_main("bbs_thread",opt);
         
-        func_expandPageNext(0);
+        window.parent.changeIframeTarget_main("bbs_thread",{b:pageconfig.bbsCode,t:pageconfig.threadCode});
+        
+        
     }
 }
 
@@ -438,3 +414,7 @@ function mytest(msg){
 
 //***********  Export ***************
 
+window.func_iframeOnload = func_iframeOnload;
+window.updateComment = updateComment;
+window.updateComment_preExec = updateComment_preExec;
+window.createNewComment_hide=createNewComment_hide;

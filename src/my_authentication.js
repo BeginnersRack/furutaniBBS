@@ -5,7 +5,7 @@ import {  createUserWithEmailAndPassword as firebase_createUserWithEmailAndPassw
         , signOut as firebase_signOut 
         ,sendEmailVerification as firebase_sendEmailVerification 
         ,updatePassword as firebase_updatePassword, updateProfile as firebase_updateProfile    } from "./FirebaseConfig.js";
-import { rtdatabase as firebaseRTDB_database ,rtdb_ref as firebaseRTDB_ref ,rtdb_onValue as firebaseRTDB_onValue } from "./FirebaseConfig.js";
+import { rtdatabase as firebaseRTDB_database ,rtdb_ref as firebaseRTDB_ref ,rtdb_onValue as firebaseRTDB_onValue , rtdb_update as firebaseRTDB_update } from "./FirebaseConfig.js";
 import { createAccessLogData  } from "./myfunc_getlog.js";
 import { getSessionID , setSessionID , getSessonIdList,getMySessionNumber } from "./myfunc_storage.js";
 import { myUuidCreate } from "./my_uuid.js";
@@ -178,7 +178,9 @@ function setListenerOnChangeConnectedStatus(user){
     
 }
 
-
+function returnHome(){
+    window.parent.changeIframeTarget_main('home');
+}
 
 
 // 新規ユーザー登録
@@ -187,7 +189,7 @@ function createNewUser(email, password){
     firebase_createUserWithEmailAndPassword(firebaseAuth, email, password).then((userCredential) => {
         // Signed in
         updateLoginUser(userCredential.user);
-        // ...
+        // returnHome();
     }).catch((error) => {
         console.log(`[error] Can not Sign-In! (${error.code}:${error.message})`);
     });
@@ -222,15 +224,15 @@ function signIn(phase=0  ,  email0="",password0=""){
               fb_signIn(execflg);  }}
             `;
             const signInMessage = `
-                <p>デフォルト <input type="radio" name="signin_q1" value="exist" checked> パスワード入力
-                                 <input type="radio" name="signin_q1" value="new"> 新規作成
+                <p>選択 <input type="radio" onchange="signIn_radio_func(1)" name="signin_q1" value="exist" checked> パスワード入力
+                        <input type="radio" onchange="signIn_radio_func(0)" name="signin_q1" value="new"> 新規作成
                 </p>
-  <label style={{ display: "block" }}>email</label> <input id="signin_email" type="email"></input>
-  <label style={{ display: "block" }}>    password(Password should be at least 6 characters) </label>
-    <input id="signin_password" type="password"></input>
+  <label style={{ display: "block" }}>email</label> <input id="signin_email" type="email" style="width: 300px;" ></input><br />
+  <label style={{ display: "block" }}>    password </label>
+    <input id="signin_password" type="password" style="width: 150px;"></input> (Password should be at least 6 characters)  <br />
+  
   <label style={{ display: "block" }}>confirm</label>
-  <button type="submit" onClick="${ jscode01 }">
-  送信</button>
+  <button type="submit" onClick="${ jscode01 }">送信</button>
             `;
             
             HtmlElement_iframeMain.style.visibility = "hidden";
@@ -244,6 +246,7 @@ function signIn(phase=0  ,  email0="",password0=""){
               firebase_signInWithEmailAndPassword(firebaseAuth, email, password).then((userCredential) => {
                  // Signed in
                  updateLoginUser(userCredential.user);
+                 returnHome();
                  
               }).catch((error) => {
                 console.log(`[error] Can not Sign-In! (${error.code}:${error.message})`);
@@ -266,8 +269,17 @@ function signIn(phase=0  ,  email0="",password0=""){
     }
     
     // end
-
 }
+function signIn_radio_func(flg){
+      let tgtelm;
+      tgtelm=document.getElementById("signin_email");
+      if(tgtelm){  tgtelm.disabled = (flg ? true : false); }
+      tgtelm=document.getElementById("signin_password");
+      if(tgtelm){  tgtelm.disabled = (flg ? true : false); }
+}
+window.signIn_radio_func = signIn_radio_func;
+
+
 
 //サインアウト
 function signOut(){
@@ -368,6 +380,12 @@ function changeAuthUserName(){
 }
 
 
+// for admin log maintenance
+function fb_firebaseRTDB_update( updates ){
+    return firebaseRTDB_update( firebaseRTDB_ref(firebaseRTDB_database) , updates );
+}
+
+
 
 //***********  Export ***************
 window.fb_getLoginUser = function(myflg=0){
@@ -385,4 +403,4 @@ window.signUp_sendEmailVerification = signUp_sendEmailVerification;
 window.signUp_changeAuthUserName = changeAuthUserName;
 window.signUp_changeAuthPassword = changeAuthPassword;
 
-
+window.fb_firebaseRTDB_update = fb_firebaseRTDB_update;

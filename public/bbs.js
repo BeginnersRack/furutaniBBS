@@ -4,7 +4,8 @@ const HtmlElement_myTableDivId ="bbs_ListTable";
 let HtmlElement_myTableDiv = null;
 function func_iframeOnload(){ // iframeの親から、onloadイベントで呼び出される
     window.parent.setEventOfButton_moveFramePage(document,"button_footprint01","home");
-    window.parent.setEventOfButton_moveFramePage(document,"button01","bbs01");
+    window.parent.setEventOfButton_moveFramePage(document,"button01","bbs01" , {b:"bbs01"} );
+    window.parent.setEventOfButton_moveFramePage(document,"button02","bbs02" , {b:"bbs02"} );
 
     HtmlElement_myTableDiv = document.getElementById(HtmlElement_myTableDivId);
 

@@ -520,14 +520,17 @@ function getSkywayPeerInstance(strKey){
 
 
 // --------------------------
-
-function changeParticipant(){
+async function changeParticipant(){
+    console.log("[Info] start changeParticipant. " );
     const memberList = parentWindowDatas.participants;
-    const loginUser = window.parent.fb_getLoginUser();
+    if(!parentWindowDatas.participants){console.log("[???] participants");return;}
+    const loginUserEmail = G.loginUser.email;
+    if(!loginUserEmail){console.log("[???] loginUserEmail");return;}
+    if(!G.SkyWayPeer){console.log("[???] SkyWayPeer");return;}
     
-    const recentRoomid0 = ( memberList[loginUser.email] ? memberList[loginUser.email].roomid : "");
+    const recentRoomid0 = ( memberList[loginUserEmail] ? memberList[loginUserEmail].roomid : "");
     const recentRoomid = (recentRoomid0 ? recentRoomid0 :"");
-    const recentRoomEnt0= ( memberList[loginUser.email] ? memberList[loginUser.email].enterflg : 0);
+    const recentRoomEnt0= ( memberList[loginUserEmail] ? memberList[loginUserEmail].enterflg : 0);
     const recentRoomEnt= ( recentRoomEnt0 ? recentRoomEnt0 : 0);
     
     // 切断
@@ -548,18 +551,21 @@ function changeParticipant(){
     
     //接続
     for (let key in memberList) {
-        if(key!=loginUser.email){
+        if(key!=loginUserEmail){
             let mem = memberList[key];
             if( recentRoomid == (mem.roomid ? mem.roomid : "") ){
                 if(mem.enterflg==recentRoomEnt){  // 同室に存在
                     if(!(mem.memberkey in G.connectedDatas)) {
-                        addNewPeer(mem.memberkey); // peerId追加
+                        try{
+                            addNewPeer(mem.memberkey); // peerId追加
+                        } catch(err){
+                            console.log("[Error] SkyWayPeer - cannot connect to Peer["+mem.memberkey+"]:"+key);
+                        }
                     }
                 }
             }
         }
     }
-    
     
 }
 

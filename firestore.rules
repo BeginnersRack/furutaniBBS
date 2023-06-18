@@ -62,14 +62,19 @@ service cloud.firestore {
     }
       // ----------- スレッド内容データのルール ------------------
     function isThreadContent(data) {
-        return data.keys().hasOnly(['created','modified_sys','modified','sort','details','details_old'])
+        return data.keys().hasOnly(['created','modified_sys','modified','sort','chaptertitle','details','details_old','imagelink','imageheight'])
         && data.created is timestamp
         && data.modified_sys is timestamp
         && data.modified is timestamp
         && data.sort is number
         && data.sort >= 0 && data.sort < 1000
+        && data.chaptertitle is string
+        && data.chaptertitle.size() <= 300
         && data.details is string
         && data.details.size() <= 1000
+        && data.imagelink is string
+        && data.imagelink.size() <= 300
+        && data.imageheight is number
         // && ([0,1]).hasAll([data.type])
         ;
     }
@@ -108,7 +113,7 @@ service cloud.firestore {
         && data.details_old is string
     ;}
     function isThreadCommentCreatable(newRes) {
-        return newRes.id == "_systemxxx" || (
+        return newRes.id == "_system" || (
               isThreadComment(newRes.data)
            && newRes.data.ownerids.hasAll([request.auth.token.email])
            && newRes.data.created == request.time
@@ -117,7 +122,7 @@ service cloud.firestore {
         );
     }
     function isThreadCommentUpdatable(newRes,orgRes) {
-        return orgRes.id == "_systemxxx" || (
+        return orgRes.id == "_system" || (
               isThreadComment(newRes.data)
            && newRes.data.diff(orgRes.data).affectedKeys().hasOnly(["ownerids","ownername","modified",'modified_sys','titlecategory',"details","details_old"])
            && orgRes.data.ownerids.hasAll([request.auth.token.email])
