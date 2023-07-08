@@ -9,13 +9,14 @@
 // import { rtdatabase as firebaseRTDB_database ,ref as firebaseRTDB_ref, set as firebaseRTDB_set , update as firebaseRTDB_update ,push as firebaseRTDB_push ,onValue as firebaseRTDB_onValue,onDisconnect as firebaseRTDB_onDisconnect  ,serverTimestamp as firebaseRTDB_serverTimestamp  } from "./FirebaseConfig.js";// ----------
 
 import { firestoredatabase , fsdb_collection, fsdb_doc ,fsdb_getDoc , fsdb_onSnapshot , fsdb_query, fsdb_where, fsdb_getDocs ,fsdb_orderBy, fsdb_limit} from "./FirebaseConfig.js";
-import { fsdb_enableIndexedDbPersistence , fsdb_getDocFromCache } from "./FirebaseConfig.js";
-import { fsdb_setDoc, fsdb_addDoc, fsdb_updateDoc ,fsdb_deleteDoc ,fsdb_Timestamp,fsdb_startAfter,fsdb_serverTimestamp ,fsdb_runTransaction } from "./FirebaseConfig.js";
+import { fsdb_enableIndexedDbPersistence , fsdb_getDocFromCache ,fsdb_getCountFromServer} from "./FirebaseConfig.js";
+import { fsdb_setDoc, fsdb_addDoc, fsdb_updateDoc ,fsdb_deleteDoc ,fsdb_Timestamp,fsdb_serverTimestamp ,fsdb_runTransaction } from "./FirebaseConfig.js";
+import { fsdb_startAt,fsdb_startAfter, fsdb_endBefore  } from "./FirebaseConfig.js";
 
 import { putdataToIndexedDb , getdataFromIndexedDb ,getKeysFromIndexedDb , removedataFromIndexedDb ,transferDBPath } from "./myfunc_indexeddb.js";
 
 import { getServerTimeFromRTDB } from "./myfunc_getlog.js";
-import { myconsolelog ,createPromise_waitDeleteKey ,myTimestampToDate } from "./myfunc_common.js";
+import { myconsolelog ,createPromise_waitDeleteKey ,myTimestampToDate,myDateTimeFormat } from "./myfunc_common.js";
 
 
 
@@ -23,15 +24,15 @@ import { myconsolelog ,createPromise_waitDeleteKey ,myTimestampToDate } from "./
 
 const indexedDbName = "furutaniBBS";
 const dataBlock_length=2;
-const indexedDb_keyName_BlockAry ="BlockAry"; // {startval:0,lastmodified:(datetime)}の配列。startvalはDBのsort値
+const indexedDb_keyName_BlockAry ="BlockAry"; // {lastCheckTime:(datetime)}
 const firestoreDb_colName_system =""; // cf)"/sys/system"
 const firestoreDb_keyName_system ="_system";
 
-const listenerAry={};  // firestoreのＤＢに対する、各ブロックごとのListenerRemove用関数
+const listenerAry={};  // firestoreのＤＢに対する、各ブロックごとのListenerRemove用関数 ★★
 // listenerAry[refPath]={startPosition:ListenerRemoveFunction}  および  {"additional":ListenerRemoveFunction}
 const listenerArySingleDoc={}; // 文書1つ単位でのリスナ設置のRemove用関数
 
-const maxSortIndexAry={};  //   firestoreＤＢの指定パスにおける、現時点での[sort]列値の最大値。
+const maxSortIndexAry={};  //   firestoreＤＢの指定パスにおける、現時点での[sort]列値の最大値。★★
 // maxSortIndexAry[refPath]=number;
 
 const getDataBlock_wait={};
@@ -125,101 +126,67 @@ async function getDataFromFirestoreDb_singleDoc(refCollectionPath,docPrimaryKey 
 
 
 
-async function getDataFromFirestoreDb(refPath , startpos,datalength , blockModeFlg=true ){
+async function getDataFromFirestoreDb(refPath , startpos,datalength  ){
     if(!refPath){ return null;}
-    //if(!datalength){ return null;}
     
-    let posMin;
-    let posMax;
-    let incrim=0;
-    let cntBlock=0;
-    let cntpos;
-    if(blockModeFlg){
+    let incrim=1;
+    let posMin=0;
+    let posMax=-1; // 全件取得指定
+    let cntpos=-1; //スタート位置(startpos=0)の1つ前=-1
+    
+    myconsolelog(`[Info] required firestore data : ${refPath}`);
+
         if(datalength>=0){
             incrim=1;
-            cntBlock=0;
             posMin=startpos;
             posMax=startpos+datalength-1;
             if(posMin<0){if(posMax>=0 || datalength==0 ){ posMax=-1; }}
             cntpos=-1;//スタート位置(startpos=0)の1つ前=-1
         } else {
             incrim=-1;
-            cntBlock=-1;
             posMax=startpos;
             posMin=posMax+datalength+1;
             if(posMax>=0){if(posMin<0){ posMin=0; }}
             cntpos=0;//スタート位置(startpos=-1)の1つ前=0
         }
-        
-        myconsolelog(`[Info] required firestore data ( ${posMin} ～ ${posMax} ) : ${refPath}`);
-        
-        getMaxOfSortIndex(refPath); // maxSortIndexAry[]を更新
-    }else{
-        myconsolelog(`[Info] required firestore data (No BlockMode): ${refPath}`);
-            incrim=1;
-            cntBlock=0;
-            posMin=0;
-            posMax=-1;
-            cntpos=-1;//スタート位置(startpos=0)の1つ前=-1
-    }
+
+
+
     //---
     let ans={};
-    
-    let cntBlock_bk=null;
-    let continueFlg=1;
-    do{
-        let param3 = await getDataBlock(refPath,cntBlock,blockModeFlg); // param3 = [blocknum,startPosition,endPosition]
+
+        let param3 = await getDataBlock(refPath); // param3 = [blocknum,startPosition,endPosition]
         if(!param3){
-            myconsolelog("[Error] firestoreからデータを取得できませんでした : "+cntBlock.toString()+" "+refPath);
+            myconsolelog("[Error] firestoreからデータを取得できませんでした :getDataBlock "+refPath);
             return ans;
         }
         
-        if(cntBlock_bk==param3[0]){
-            continueFlg=0;
-        }else{
-            let PandK=transferDBPath([refPath,""]); // firestoreのpath⇒indexedDBのパスへの変換:
-            cntBlock=param3[0];
-            let dataary = await getKeysFromIndexedDb_fs(indexedDbName,PandK,param3[1],param3[2] , (incrim==-1) ,blockModeFlg );
-            if(!dataary){
-                myconsolelog("[Error] indexedDBからKey値データを取得できません："+refPath);
-                continueFlg=0;
-            } else {
-                //if(!blockModeFlg){ dataary = dataary.filter(item => (Array.isArray(item) && item[0]!=(PandK[1]+"/"+indexedDb_keyName_BlockAry)) ); }
-                
-                let indexDbObjectStoreName = PandK[0];
-                
-                if(dataary.length==0){
-                    let maxIndx=maxSortIndexAry[refPath]; // let maxIndx=await getMaxOfSortIndex(refPath); //
-                    if(maxIndx<param3[2]){ // let endPosition=param3[2]
-                        continueFlg=0;
-                    }
-                }else{
-                    for(let keys of dataary){
-                        cntpos+=incrim;
-                        if((cntpos>=posMin)&&(cntpos<=posMax)){    //   (cntpos<=posMax)||(posMax<0)
-                            ans[cntpos] = await getdataFromIndexedDb_fs(indexedDbName,indexDbObjectStoreName, keys[1] ); 
-                            if(!ans[cntpos]){
-                                myconsolelog("[Error] indexedDBからデータを取得できません："+refPath+" - "+keys[1]);
-                                //continueFlg=0; // no data?
-                            }else{
-                                ans[cntpos].primaryKey=keys[1];
-                            }
+
+        let PandK=transferDBPath([refPath,""]); // firestoreのpath⇒indexedDBのパスへの変換:
+        
+        //let dataary = await getKeysFromIndexedDb_fs(indexedDbName,PandK,param3[1],param3[2] , (incrim==-1) );
+        let dataary = await getKeysFromIndexedDb_fs(indexedDbName,PandK, 0 , 999999 , (incrim==-1) );
+        if(!dataary){
+            myconsolelog("[Error] indexedDBからKey値データを取得できません："+refPath);
+        } else {
+        
+            let indexDbObjectStoreName = PandK[0];
+            
+            if(dataary.length>0){ // 取れるデータがある
+                for(let keys of dataary){
+                    cntpos+=incrim;
+                    if((cntpos>=posMin)&&( datalength==0||(cntpos<=posMax) )){ //ソート順に従い目的位置のデータを抽出
+                        ans[cntpos] = await getdataFromIndexedDb_fs(indexedDbName,indexDbObjectStoreName, keys[1] ); 
+                        if(!ans[cntpos]){
+                            myconsolelog("[Error] indexedDBからデータを取得できません："+refPath+" - "+keys[1]);
+                        }else{
+                            ans[cntpos].primaryKey=keys[1];
                         }
                     }
                 }
             }
-            if(continueFlg){
-                let needNextFlg = (incrim==1)?(cntpos<=posMax):(cntpos>=posMin);  //  (cntpos<=posMax)||(posMax<0)
-                if(needNextFlg){
-                    cntBlock_bk=cntBlock;
-                    cntBlock+=incrim;
-                    if(cntBlock<0)continueFlg=0;
-                }else{
-                    continueFlg=0;
-                }
-            }
+        
         }
-    } while (continueFlg);
     
     return ans;
 }
@@ -227,293 +194,263 @@ async function getDataFromFirestoreDb(refPath , startpos,datalength , blockModeF
 
 //*********** my functions ****************
 
-async function getDataBlock(refPath,requestSortIndexBlockNum0=-1 , blockModeFlg=true ){ 
+//async function getDataBlock(refPath,requestSortIndexBlockNum0=-1 , blockModeFlg=true ){}  ★
+async function getDataBlock( refPath ){ 
 
-    let blocknum;
-    let startPosition;
-    let endPosition;
-    if(blockModeFlg){
+    //let blocknum; ★
+    //let startPosition;
+    //let endPosition;
+    
+    
+    
         let additionalFlg=true;
-        if(listenerAry){if(listenerAry[refPath]){additionalFlg = (typeof (listenerAry[refPath].additional)!="function");}}
+        if(listenerAry){if(listenerAry[refPath]){
+            additionalFlg = (typeof (listenerAry[refPath].removefunc)!="function");
+        }}
         if(additionalFlg){ // additional(新ブロック)リスナの設定がまだされていない⇒初期化から実施する
             let flg=await init_getDataFromFirestore(refPath); 
             if(!flg){ return null; }
             
-            remakeAdditionalListener(refPath);
+            // remakeAdditionalListener(refPath);
         }
         
-        // ブロック境界データの取得
-        let limitsortAryPromise = getdataFromIndexedDb_fs(indexedDbName,refPath,indexedDb_keyName_BlockAry); //(dbname,storeName,key)
-        
-        let maxIndx=maxSortIndexAry[refPath]; // 現時点でのsort値の最大値を取得する
-        if(typeof maxIndx != "number"){
-                //let allLength=getDataCount(refPath);
-                maxIndx = await getMaxOfSortIndex(refPath);
-                if(typeof maxIndx =="number"){
-                    maxSortIndexAry[refPath] = maxIndx;
-                    myconsolelog("[Info] sort値の現時点最大値をfirestore(SERVER)から取得："+maxIndx.toString() );
-                }else{
-                    myconsolelog("[Error] sort値の現時点最大値をfirestoreから取得できませんでした : "+refPath);
-                }
-        }
-        if(typeof maxIndx != "number"){ 
-            myconsolelog("[Error] cannot get maxIndx or maxSortIndexAry");
-            return null; 
-        }
-        let maxBlockNum = (((maxIndx)/dataBlock_length) | 0); 
-        
-        
-        // blocknum = ((requestSortIndex/dataBlock_length) | 0); // 取得対象となるブロックの個数目。先頭が0個目。
-        let requestSortIndexBlockNum=(requestSortIndexBlockNum0 | 0); //小数点以下切捨
-        blocknum=requestSortIndexBlockNum;
-        if(requestSortIndexBlockNum<0){ // 後ろから数える
-            blocknum = requestSortIndexBlockNum+maxIndx+1;
-            if(blocknum<0)blocknum=0;
-        }
-        if(blocknum>maxBlockNum)blocknum=maxBlockNum;
-        
-        startPosition = blocknum * dataBlock_length;
-        endPosition = startPosition+dataBlock_length;
-        
-    //    for(let i=limitsortAry.length;i<=blocknum;i++){
-    //        limitsortAry[i]={startval:i * dataBlock_length,lastmodified:0};
-    //    }
-        
-        // --
-        
-        myconsolelog(`[Info] required firestore data : block ${blocknum} (sortIndex ${startPosition} ～ ${endPosition})`);
-        
-        // --
-        let fixedFlg=false;
-        let limitsortAry = await limitsortAryPromise; // ブロック境界データの取得
-        if(limitsortAry){ if(limitsortAry[blocknum]){
-            fixedFlg = limitsortAry[blocknum].fixed; // 実装なし
-            if(limitsortAry[blocknum].lastmodified){
-                 let blocklastModified = limitsortAry[blocknum].lastmodified;
-            }
-        }}
-        if(fixedFlg){  // indexdbにデータあるならばそこから取得するべし。
-            myconsolelog(`[Info] block ${blocknum} already Fixed by indexedDB.`);
-            return ([blocknum,startPosition,endPosition]);
-        }
-        
-    }else{
-        startPosition=0;
-        endPosition=null;
-        blocknum =0;
-    }
     
     // -------------------------------------------
     let BlockListenerRemove = null;
     if(listenerAry[refPath]){
-        BlockListenerRemove =listenerAry[refPath][startPosition];
+        BlockListenerRemove =listenerAry[refPath].removefunc;
     }
     if(typeof BlockListenerRemove=="function"){ // firestoreの変更をリッスン中。indexdbからデータ取得するべし。
-        myconsolelog(`[Info] block ${blocknum}(${startPosition}<= (sort) <${endPosition}) already stored by indexedDB.`);
-        return ([blocknum,startPosition,endPosition]);
+        myconsolelog(`[Info] block [${refPath}] already stored by indexedDB.`);
+        return (1);
     }
     
     // ---------------------------------------------
     //firestoreから取得する。
     
-    let waitPromise = createPromise_waitDeleteKey( getDataBlock_wait , refPath+"_"+startPosition.toString(),true,10 ).catch((rejectinfo)=>{
-            myconsolelog("[Warning] waitPromise-timeout : "+rejectinfo); }); //indexedDBへのデータ登録完了待機フラグを設置
-    myconsolelog(`[Info] firestore SERVER access occured(block). ${refPath} (${startPosition}～${endPosition})`);
+    let waitPromise = createPromise_waitDeleteKey( getDataBlock_wait , refPath,true,10 ).catch((rejectinfo)=>{
+            myconsolelog("[Warning] waitPromise-timeout : "+rejectinfo); 
+    }); //indexedDBへのデータ登録完了待機フラグを設置
     
-    if(!listenerAry[refPath]) listenerAry[refPath]={}; // getDataFromFireStore_Block()関数内で listenerAry[refPath][startPosition] を設定する
-    getDataFromFireStore_Block(refPath,startPosition,endPosition); // 旧setDataBlockListener
+    myconsolelog(`[Info] firestore SERVER access occured(block). ${refPath} `);
     
-    await waitPromise.catch(function(strinfo){
+    //if(!listenerAry[refPath]) listenerAry[refPath]={}; // getDataFromFireStore_Block()関数内で listenerAry[refPath][startPosition] を設定する
+    //getDataFromFireStore_Block(refPath,startPosition,endPosition); // 旧setDataBlockListener  ★
+    
+    
+    remakeAdditionalListener(refPath);
+    
+    await waitPromise.catch(function(strinfo){ // getDataFromFireStore_Block()関数内でgetDataBlock_waitがクリアされるのを待機
         myconsolelog(`[Warning] indexedDBへの更新待機がtimeoutしました : ${strinfo}`);
     });
     
     // -----
-    return ([blocknum,startPosition,endPosition]);
+    return (2);
 }
 
 
 
-async function init_getDataFromFirestore(refPath){ 
+async function init_getDataFromFirestore(refPath){   //  indexedDBのBlockAry文書を準備
     
     myconsolelog(`[Info] called : init_getDataFromFirestore()   ${refPath} `);
     
     await getServerTimeFromRTDB(false,true); // 時計のオフセット値(serverTimeOffsetFromRTDB)を初期化
     
-    let maxIndx=maxSortIndexAry[refPath]; // 現時点でのsort値の最大値を取得する
-    if(typeof maxIndx != "number"){
-            maxIndx = await getMaxOfSortIndex(refPath);
-            if(typeof maxIndx =="number"){
-                maxSortIndexAry[refPath] = maxIndx;
-                myconsolelog("[Info] sort値の現時点最大値をfirestoreから取得："+maxIndx.toString() );
-            }else{
-                myconsolelog("[Error] sort値の現時点最大値をfirestoreから取得できませんでした : "+refPath);
-            }
-    }
-    if(typeof maxIndx != "number"){ 
-            myconsolelog("[Error] cannot get maxIndx or maxSortIndexAry");
-            return null; 
-    }
-    
-    // 現時点での最後(最新)のブロックの、次のブロックを用意する。
-    let blocknum = ((maxIndx/dataBlock_length) | 0)+1; // 対象となるブロックの個数目。先頭が0個目。
-    let startPosition = blocknum * dataBlock_length;
-    let endPosition = startPosition+dataBlock_length;
-    
     
     //--
     let BlockListenerRemove = null;
     if(listenerAry[refPath]){
-        BlockListenerRemove =listenerAry[refPath].additional;
+        BlockListenerRemove =listenerAry[refPath].removefunc;
     }
     if(typeof BlockListenerRemove=="function"){ 
-        myconsolelog("[Warning] fireStore取得処理の新ブロックリスナー(additional)は、すでに設定されています : "+startPosition.toString()+" "+refPath);
+        let strvl = (listenerAry[refPath].datetime ? myDateTimeFormat(listenerAry[refPath].datetime) : "???");
+        myconsolelog("[Warning] fireStore取得処理の新規データリスナー(additional)は、すでに設定されています : "+strvl+"～ "+refPath);
         return null
     }
     
     // -------
-    let pathary=refPath.split("/");
-    
-    let cngflg=0;
+    let sepTime;
+    let cngflg=0; // BlockAry更新Flg
     let limitsortAry= await getdataFromIndexedDb_fs(indexedDbName,refPath,indexedDb_keyName_BlockAry); //(dbname,storeName,key)
-     // {startval:0,lastmodified:(datetime)}の配列。
-     // 各ブロックの境界値。Ary[0]は最初のブロックの最前値。lastmodifiedはこのブロックのデータの最後の確認日時を記録。
-     // indexdbに保管し取得する。：
     if(!limitsortAry){
-        limitsortAry=[];
-      //limitsortAry[0]={startval:0,lastmodified:0,fixed=false};
+        limitsortAry={};     //  {lastCheckTime:(datetime)}
         cngflg=1;
+    }else{
+        sepTime = limitsortAry.lastCheckTime;
     }
-//    let orgary={};
-//    for(let i=limitsortAry.length-1;i>=0;i--){
-//        orgary[i]=limitsortAry[i].fixed;
-//    }
-    // ---
-//    if(pathary.length==3){  // [BulletinBoardList/BBS01/threadList]はFixさせない：常に最新を取得する
-//        for(let i=orgary.length-1;i>=0;i--){
-//            orgary[i]=false;
-//        }
-//    }else{
-//        for(let i=blocknum-2;i>=0;i--){
-//            orgary[i]=true;
-//        }
-//    }
-    // ---
-//    for(let i=limitsortAry.length-1;i>=0;i--){
-//        if(orgary[i] != limitsortAry[i].fixed) cngflg=1;
-//    }
-    if(cngflg){
-        await putdataToIndexedDb_fs(indexedDbName,refPath,indexedDb_keyName_BlockAry , limitsortAry,true); // limitsortAry を indexedDBに保存
+    if(!sepTime){
+        sepTime=0;
     }
     
-    // ---------------------------------------------
-    // 新ブロック発生時の処理(リスナー)を作成する。
     
-    //    //listenerAry[refPath].additional = setDataBlockListener(refPath,startPosition,null);
-    //await remakeAdditionalListener(refPath)
     
-    //----------
+    // =======================================
+    let storedDataTimeIndexDb=new Date(0);
+    const timetblAry=[];
     
-
-    return true;
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-async function getDataFromFireStore_Block(refPath,startPosition,endPosition0=0 ){ //返値：なし
-    let blockModeFlg=true;
-    let endPosition=0;
-    if(typeof endPosition0 == "number"){ 
-        endPosition = endPosition0;
-        if(endPosition==0) endPosition = startPosition + dataBlock_length;
-    }else{ // endPosition0 にNullが指定されていた場合はBlock処理しない
-        blockModeFlg=false;
-    }
-    
-    let storedIndexeddbTime;
-    let storedIndexeddbFixed;
-    if(blockModeFlg){
-          // ブロック境界データの取得
-        let limitsortAry= await getdataFromIndexedDb_fs(indexedDbName,refPath,indexedDb_keyName_BlockAry); //(dbname,storeName,key)
-          // {startval:0,lastmodified:(datetime)}の配列。
-          // 各ブロックの境界値。Ary[0]は最初のブロックの最前値。lastmodifiedはこのブロックのデータの最後の確認日時を記録。
-          // indexdbに保管し取得する。
-        if(limitsortAry){
-            let blocknum=-1;
-            for (let i of Object.keys(limitsortAry)){
-                if(limitsortAry[i].startval==startPosition) {
-                    blocknum=i;
-                    storedIndexeddbTime=limitsortAry[i].lastmodified;
-                    storedIndexeddbFixed = limitsortAry[i].fixed; //現時点では未定義。
-                    //storedIndexeddbFixed = true;
-                    break;
+    let PandK=transferDBPath([refPath,""]); // firestoreのpath⇒indexedDBのパスへの変換:
+    let dataary = await getKeysFromIndexedDb_fs(indexedDbName,PandK, 0 , 999999 );
+    if(!dataary){
+        myconsolelog("[Error] indexedDBからKey値データを取得できません："+refPath);
+    } else {
+        let indexDbObjectStoreName = PandK[0];
+        if(dataary.length>0){ // データがある
+            for(let keys of dataary){  // keys[] : keys[0]=Indexキー([コード,Sort値]) , keys[1]=キー値
+                const onedt = await getdataFromIndexedDb_fs(indexedDbName,indexDbObjectStoreName, keys[1] ); 
+                let test = onedt.modified_sys;
+                if(onedt.modified_sys){
+                    const dttime = myTimestampToDate(onedt.modified_sys);
+                    if(dttime > storedDataTimeIndexDb){
+                        storedDataTimeIndexDb = dttime;
+                    }
+                    timetblAry.push( {key:keys[1],time:dttime} );
                 }
             }
         }
-    }
-    if(!storedIndexeddbTime){storedIndexeddbTime=0;}
-    
-    if(storedIndexeddbFixed){
-        myconsolelog(`[Info] canceled getting fireStore data from SERVER : Fixed`
-                +` (${startPosition}-${endPosition?endPosition:""}) : ${refPath}`);
-        delete getDataBlock_wait[refPath+"_"+startPosition.toString()];
-        return null;
+        
     }
     
+    // IndexedDBのストアデータ（storedDataTimeIndexDb以前）に、FireStoreとの差異が見つかれば更新する
+    const basetime =  new Date(0);
+    let ttlcnt=updateStoredIndexedDBData(  refPath , basetime , storedDataTimeIndexDb , timetblAry );
+    
+    limitsortAry.lastCheckTime = storedDataTimeIndexDb;
+    cngflg=1;
     
     
-    myconsolelog(`[Info] now getting BlockData from fireStore(SERVER) : `
-                +`sortIndex (${startPosition}-${endPosition?endPosition:""}) : ${myDateTimeFormat(storedIndexeddbTime,4)} : ${refPath}`);
     
+    // =======================================
+
     
+    // remakeAdditionalListener(refPath);
     
-    // ------ クエリの条件を作成 -------
+    if(cngflg){ // limitsortAry を indexedDBに保存
+        await putdataToIndexedDb_fs(indexedDbName,refPath,indexedDb_keyName_BlockAry , limitsortAry,true); 
+    }
+    
+    return true;
+}
+function countInAry(ary,start,end){
+    let ans=0;
+    for (let i = 0; i < ary.length; i++){
+        let dt=ary[i];
+        if(dt.time){dt = dt.time;}
+        if(dt>=start){if(dt<end){
+            ans++;
+        }}
+    }
+    return ans;
+}
+
+async function getCountOfDataOnFS(refPath ,starttime,endtime){
+    
+    // let starttime = (new Date(0));
+    
+    // ------ クエリ条件を作成 ------- 
     let queryWhereAry=[];
-    //queryWhereAry[0] = fsdb_orderBy("sort","asc");
-    if(blockModeFlg){
-        queryWhereAry.push( fsdb_orderBy("sort","asc") );
-        queryWhereAry.push( fsdb_where("sort", ">=", startPosition) );
-        if(endPosition){ queryWhereAry.push( fsdb_where("sort", "<", endPosition) ); }
-    }
-    //if(storedIndexeddbTime){ queryWhereAry.push( fsdb_where("modified_sys", ">", storedIndexeddbTime) ); } // 範囲指定は1つの列しか対象にできない
+    queryWhereAry[0] = fsdb_orderBy("modified_sys","asc"); 
+    queryWhereAry.push( fsdb_startAt(fsdb_Timestamp.fromDate( starttime )) ); 
+    queryWhereAry.push( fsdb_endBefore(fsdb_Timestamp.fromDate( endtime )) ); 
     
     const tgtRef = fsdb_collection(firestoredatabase , refPath);
     let tgtquery = fsdb_query(tgtRef, ...queryWhereAry );
     
+    //-----
+    let ans;
     
-    // ------- クエリ実行 ------
-    
-    //ans=await getDataBlockFromFirestore(tgtquery);
-    try {
-        //myconsolelog(`[Info] request fsdb_onSnapshot Block(${startPosition}～) : ${refPath}`);
-        
-        //const querySnapshot = await fsdb_getDocs(tgtquery);
-        listenerAry[refPath][startPosition] = fsdb_onSnapshot( tgtquery , async function(Snapshot){ // リスナ設定
-            let localshotflg = Snapshot.metadata.hasPendingWrites;
-            if( localshotflg ){
-                myconsolelog("[Info] onSnapshot listener (hasPendingWrites) occured. : "+refPath+"("+(startPosition.toString())+")");
-            }else{
-                let cnt = await fsdb_processSnapshot(Snapshot); // IndexedDBに退避     
-                myconsolelog("[event] onSnapshot listener (server) occured(Block). : "+refPath+"("+(startPosition.toString())+") count="+(cnt?cnt.toString():"") );
-                delete getDataBlock_wait[refPath+"_"+startPosition.toString()]; // 後続処理へのトリガ
-                checkListenerListener(refPath,Snapshot);
-            }
-        });
-        myconsolelog(`[Info] requested fsdb_onSnapshot Block(${startPosition}～) : ${refPath}`);
-    } catch (e) {
-        myconsolelog("[Error] cannot get documents : "+ e);
+    const qhCount = await fsdb_getCountFromServer(tgtquery);
+    if(qhCount){
+        const obj = qhCount.data();
+        if(obj){
+            ans = obj.count;
+        }
     }
     
+    return ans;
 }
+async function updateStoredIndexedDBData( refPath ,starttime , endtime ,countIndxAry){
+    let ttlcnt = 0;
+    const limitcnt=2; // 同時処理件数
+    
+    let fs_cnt = await getCountOfDataOnFS(refPath ,starttime , endtime ); // starttime <= x < endtime
+    let idx_cnt = countInAry(countIndxAry,starttime , endtime);
+    if(fs_cnt!=idx_cnt){ // IndexedDBのデータの更新が必要
+        let flg=0;
+        if(fs_cnt==0){
+            flg=1;//削除
+        }else{
+            if(idx_cnt==0){
+                flg=2;//取得
+            }else{
+                if((fs_cnt<=limitcnt)||(idx_cnt<=limitcnt)){
+                    flg=3;//削除+取得
+                }
+            }
+        }
+        
+        if(flg==0){
+            const midtime = new Date( (starttime.getTime()+endtime.getTime())/2 );
+            ttlcnt += await updateStoredIndexedDBData( refPath ,starttime , midtime ,countIndxAry);
+            ttlcnt += await updateStoredIndexedDBData( refPath , midtime ,  endtime ,countIndxAry);
+        }else{
+           
+            //IndexedDBから削除
+            if((flg & 1)!=0){
+                for(let i=0;i<countIndxAry.length;i++){
+                    if(countIndxAry[i].time>=starttime){if(countIndxAry[i].time<endtime){
+                        let delflg=1;
+                        if(1==1){  //本当にFireStoreにはないのか確認
+                            const tgtRef = fsdb_doc( firestoredatabase , refPath , countIndxAry[i].key );
+                            const docSnap = await fsdb_getDoc(tgtRef);
+                            if (docSnap.exists()) {
+                                let tgtdoc = docSnap.data();
+                                delflg=0;
+                                myconsolelog("[Warning] Fix:Firestoreに文書があることを確認 : "+refPath+" "+ countIndxAry[i].key);
+                                await putdataToIndexedDb_fs(indexedDbName,refPath, countIndxAry[i].key , tgtdoc ,true); 
+                            }
+                        }
+                        if(delflg){
+                            myconsolelog("[Warning] Fix:IndexedDBから文書を削除 : "+refPath+" "+ countIndxAry[i].key);
+                            removedataFromIndexedDb_fs(indexedDbName,refPath, countIndxAry[i].key );
+                        }
+                        
+                    }}
+                }
+                
+            }
+            //FireStoreからデータ取得
+            if((flg & 2)!=0){
+                ttlcnt = await restoreFromFBDBtoIndexedDB(refPath ,starttime , endtime);
+            }
+        }
+    }
+    return ttlcnt;
+}
+
+async function restoreFromFBDBtoIndexedDB(refPath ,starttime , endtime){
+    // ------ 1回限り取得のクエリ条件を作成 -------
+    let queryWhereAry=[];
+    queryWhereAry[0] = fsdb_orderBy("modified_sys","asc");  // 範囲指定は1つの列しか対象にできない 
+    queryWhereAry.push( fsdb_startAt(fsdb_Timestamp.fromDate( starttime )) ); 
+    queryWhereAry.push( fsdb_endBefore(fsdb_Timestamp.fromDate( endtime )) ); 
+    
+    const tgtRef = fsdb_collection(firestoredatabase , refPath);
+    let tgtquery = fsdb_query(tgtRef, ...queryWhereAry );
+    
+    //---
+    myconsolelog(`[Info] fsdb-Request(Once)[${myDateTimeFormat(starttime)}～${myDateTimeFormat(endtime)}] : ${refPath}`);
+    const querySnapshot = await fsdb_getDocs(tgtquery);
+    let cnt = await fsdb_processSnapshot(querySnapshot);
+    myconsolelog(`[Info] fsdb_onSnapshot(Once)→Stored(${cnt}) : ${refPath}`);
+    
+    //---
+    checkListenerListener(refPath,querySnapshot);
+    delete getDataBlock_wait[refPath+"_once"]; // 後続処理へのトリガ
+
+    return cnt;
+}
+
+
 function fsdb_processSnapshot(querySnapshot){ // Firestoreから取得されたDocデータをIndexedDBに退避させる
     return new Promise( function(resolve,reject){
         
@@ -564,6 +501,7 @@ function fsdb_processSnapshot(querySnapshot){ // Firestoreから取得されたD
                 }
                 
                 let existDocFlg=0; // limitsortAryへの変更の有無
+                let maxSortIndexFlg=0; // maxSortIndexAryへの変更の有無
                 let lastModifiedTime=0;
                 for(let res of values){
                     switch(res.status){
@@ -577,49 +515,50 @@ function fsdb_processSnapshot(querySnapshot){ // Firestoreから取得されたD
                             let docdata = res.value;
                             existDocCnt++;
                             
-                            let blocknum=null;
+//                            let blocknum=null;
                             if(docdata){if(typeof docdata.sort == "number"){
-                                blocknum = ( docdata.sort/dataBlock_length )|0;
-                                let flg=true;
-                                do {
-                                    if(!limitsortAry[blocknum]){flg=false;
-                                    }else{
-                                        if(docdata.sort<limitsortAry[blocknum].startval){ blocknum--;
-                                        }else{
-                                            let nextstart=0;
-                                            if(limitsortAry[blocknum+1]){nextstart=limitsortAry[blocknum+1].startval;}
-                                            if(nextstart){
-                                                if(docdata.sort>=nextstart){blocknum++;
-                                                }else{flg=false;}
-                                            }else{ flg=false;
-                                            }
-                                        }
-                                    }
-                                } while(flg);
+//                                blocknum = ( docdata.sort/dataBlock_length )|0;
+//                                let flg=true;
+//                                do {
+//                                    if(!limitsortAry[blocknum]){flg=false;
+//                                    }else{
+//                                        if(docdata.sort<limitsortAry[blocknum].startval){ blocknum--;
+//                                        }else{
+//                                            let nextstart=0;
+//                                            if(limitsortAry[blocknum+1]){nextstart=limitsortAry[blocknum+1].startval;}
+//                                            if(nextstart){
+//                                                if(docdata.sort>=nextstart){blocknum++;
+//                                                }else{flg=false;}
+//                                            }else{ flg=false;
+//                                            }
+//                                        }
+//                                    }
+//                                } while(flg);
+
                                 //--
                                 if(typeof (maxSortIndexAry[refPath]) != "number"){
                                     maxSortIndexAry[refPath]=docdata.sort;
                                 }
                                 if(docdata.sort>maxSortIndexAry[refPath]){
                                     //maxSortIndexAry[refPath]=docdata.sort;
-                                    getMaxOfSortIndex(refPath,true); // maxSortIndexAry[refPath]を更新する
+                                    //getMaxOfSortIndex(refPath,true); // maxSortIndexAry[refPath]を更新する
+                                    maxSortIndexFlg=1;
                                 }
                             }}
-                            if(!limitsortAry[blocknum]){
-                                limitsortAry[blocknum]={};
-                                limitsortAry[blocknum].startval = blocknum*dataBlock_length;
-                                existDocFlg++;
-                            }
+//                            if(!limitsortAry[blocknum]){
+//                                limitsortAry[blocknum]={};
+//                                limitsortAry[blocknum].startval = blocknum*dataBlock_length;
+//                                existDocFlg++;
+//                            }
                             
                             
                             let nowModTime = myTimestampToDate(docdata.modified_sys);
                             if(!nowModTime) nowModTime = nowServeTime;
                             let lastmod=0;
-                            if(limitsortAry[blocknum]){
-                                lastmod = limitsortAry[blocknum].lastmodified;
-                                let modsys = myTimestampToDate(docdata.modified_sys);
-                                if((!lastmod)||(modsys>lastmod)){
-                                    limitsortAry[blocknum].lastmodified = modsys;
+                            if(limitsortAry){
+                                lastmod = limitsortAry.lastCheckTime;
+                                if((!lastmod)||(nowModTime>lastmod)){
+                                    limitsortAry.lastCheckTime = nowModTime;
                                     existDocFlg++;
                                 }
                             }
@@ -628,6 +567,9 @@ function fsdb_processSnapshot(querySnapshot){ // Firestoreから取得されたD
                 }
                 if(existDocFlg){ // limitsortAry を indexedDBに保存
                     await putdataToIndexedDb_fs(indexedDbName,refPath,indexedDb_keyName_BlockAry , limitsortAry,true); 
+                }
+                if(maxSortIndexFlg){
+                    getMaxOfSortIndex(refPath,true); // firestoreを検索して maxSortIndexAry[refPath]を更新する
                 }
             }
             
@@ -648,24 +590,23 @@ function fsdb_processSnapshot(querySnapshot){ // Firestoreから取得されたD
 // 新規追加分の監視：新規追加があればリスナーは自動削除する
 async function remakeAdditionalListener(refPath){
     if(listenerAry){
-        if(listenerAry[refPath]){if(typeof (listenerAry[refPath].additional)=="function"){
-            listenerAry[refPath].additional(); // endPosition無しのリスナーを削除
-            listenerAry[refPath].additional=null;
-            myconsolelog("[Info] fireStore取得処理の新ブロックリスナー(additional)を削除");
+        if(listenerAry[refPath]){if(typeof (listenerAry[refPath].removefunc)=="function"){
+            listenerAry[refPath].removefunc(); // リスナーを削除
+            listenerAry[refPath].removefunc=null;
+            myconsolelog("[Info] fireStore取得処理の新データリスナー(additional)を削除 : "+refPath);
         }}
     }else{
         listenerAry={};
     }
+    
     if(!listenerAry[refPath])listenerAry[refPath]={};
+    listenerAry[refPath].removefunc = await setAdditionalListener(refPath);
     
-    
-    listenerAry[refPath].additional = await setAdditionalListener(refPath);
-    
-    if(listenerAry[refPath].additional){
-        if(typeof (listenerAry[refPath].additional)=="function"){
-            myconsolelog("[Info] fireStore取得処理の新ブロックリスナー(additional)を設定");
+    if(listenerAry[refPath].removefunc){
+        if(typeof (listenerAry[refPath].removefunc)=="function"){
+            myconsolelog("[Info] fireStore取得処理の新データリスナー(additional)を設定 : "+refPath);
         }else{
-            myconsolelog("[ERROR] fireStore取得処理の新ブロックリスナー(additional)の設定が不正："+typeof (listenerAry[refPath].additional));
+            myconsolelog("[ERROR] fireStore取得処理の新データリスナー(additional)の設定が不正："+typeof (listenerAry[refPath].removefunc));
         }
     }
 }
@@ -673,41 +614,34 @@ async function setAdditionalListener(refPath){ //返値は、リスナー解除�
     
     // ---- 監視対象期限を調査
     let storedIndexeddbTime;
-    let limitsortAry= await getdataFromIndexedDb_fs(indexedDbName,refPath,indexedDb_keyName_BlockAry); //(dbname,storeName,key)
-        //   limitsortAry[0]={startdate:0, enddate:startDate, obtaintime:0 };
-    if(limitsortAry){
-        for (let i of Object.keys(limitsortAry)){
-            if(limitsortAry[i].obtaintime) {
-                if((!storedIndexeddbTime)||(limitsortAry[i].obtaintime>storedIndexeddbTime)) {
-                    storedIndexeddbTime = limitsortAry[i].obtaintime;
-                }
-            }
-        }
-    }
+    let limitsortAry= await getdataFromIndexedDb_fs(indexedDbName,refPath,indexedDb_keyName_BlockAry); // limitsortAry = {lastCheckTime:(datetime)}
+    if(limitsortAry){  if(limitsortAry.lastCheckTime){
+            storedIndexeddbTime = limitsortAry.lastCheckTime;
+    } }
     
     if(!storedIndexeddbTime){
         if(limitsortAry){
-            if(limitsortAry.length==0){
-                myconsolelog(`[Info] IndexedDBの ${indexedDb_keyName_BlockAry}設定が空です : ${refPath}`);
-            }else{
-                myconsolelog(`[Warning] listener期限が${indexedDb_keyName_BlockAry}(IndexedDB)から設定できません : ${refPath}`);
-            }
+                myconsolelog(`[Warning] listener期限が${indexedDb_keyName_BlockAry}(IndexedDB)から取得できません : ${refPath}`);
         }else{
             myconsolelog(`[Warning] IndexedDBに ${indexedDb_keyName_BlockAry}が設定されていません : ${refPath}`);
         }
         // return null;
-        storedIndexeddbTime=getServerTimeFromRTDB()-100;
+        
+        //storedIndexeddbTime=getServerTimeFromRTDB()-100;
+        storedIndexeddbTime=0;
     }
     
+    myconsolelog(`[Info] Try set Additional-listener for fireStore data ${myDateTimeFormat(storedIndexeddbTime,2)} : ${refPath}`);
     
-    myconsolelog(`[Info] Try set Additional-listener for fireStore data ${myDateTimeFormat(storedIndexeddbTime,3)}(${storedIndexeddbTime.toString()}) : ${refPath}`);
     
     
-    // ------ リスナーの条件を作成 -------
+    // ------ リスナーのクエリ条件を作成 -------
     let queryWhereAry=[];
-    queryWhereAry[0] = fsdb_orderBy("modified_sys","asc");
+    queryWhereAry[0] = fsdb_orderBy("modified_sys","asc");  // 範囲指定は1つの列しか対象にできない 
+    queryWhereAry.push( fsdb_startAfter(fsdb_Timestamp.fromDate(new Date(storedIndexeddbTime))) ); 
     //queryWhereAry.push( fsdb_where("modified_sys", ">", storedIndexeddbTime) );
-    queryWhereAry.push( fsdb_startAfter(fsdb_Timestamp.fromDate(new Date(storedIndexeddbTime))) );
+    //    queryWhereAry.push( fsdb_orderBy("sort","asc") );
+    //    queryWhereAry.push( fsdb_where("sort", ">=", startPosition) );
     
     const tgtRef = fsdb_collection(firestoredatabase , refPath);
     let tgtquery = fsdb_query(tgtRef, ...queryWhereAry );
@@ -720,17 +654,20 @@ async function setAdditionalListener(refPath){ //返値は、リスナー解除�
         
         let cnt = await fsdb_processSnapshot(querySnapshot);
         
-        if(cnt>(dataBlock_length+10)){ // 取得データ件数がブロック長を超えるようなら、リスナを再作成する
-            setTimeout( remakeAdditionalListener,0, refPath );
+        if(cnt>(dataBlock_length)){ // 取得データ件数が制限値を超えるようなら、リスナを再作成する
+            setTimeout( remakeAdditionalListener,100, refPath );
         }
         
         checkListenerListener(refPath,querySnapshot);
+        
+        delete getDataBlock_wait[refPath]; // 後続処理へのトリガ
+        
     });
     
 }
 
 
-// -------- リスナーリスナー（firestoreからの通知によるindexedDBの更新の監視）
+// -------- リスナーリスナー（firestoreからの通知によるindexedDBの更新があった場合に実行するcallback関数の設定）
 let myListenerListenerAry={};
 function setListenerListener(tgtPath,callbackFunc=""){
     delete myListenerListenerAry[tgtPath];
@@ -759,26 +696,6 @@ function checkListenerListener(tgtpath,Snapshot){
 
 
 // --------
-async function getDataCount(refPath,q_fieldname="",q_condition="",q_value=""){
-    let ans=0;
-    
-    try {
-        const tgtRef = fsdb_collection(firestoredatabase , refPath);
-
-        if(q_fieldname){
-            const q = fsdb_query( tgtRef , fsdb_where(q_fieldname, q_condition, q_value));
-            const snapshot = await getCountFromServer(q);
-        }else{
-            const snapshot = await getCountFromServer(tgtRef);
-        }
-        ans = snapshot.data().count;
-        myconsolelog(`[Info] fireStore : getDataCount=${ans} ${q_fieldname} ${q_condition} ${q_value} in ${refPath}`);
-    } catch (e) {
-        myconsolelog("Error getting count document:"+ e);
-    }
-    
-    return ans;
-}
 
 
 
@@ -823,7 +740,7 @@ async function getMaxOfSortIndex(refCollectionPath ,forceFlg=false){
             myconsolelog("[Error] fireStore getMaxOfSortIndex取得に失敗 : "+refPath);
         }else{
             sysval = sysdoc.sortIndex_Max;
-            newval=sysval;
+            newval=sysval; // createSystemDoc()内でgetMaxOfSortIndex_recalc()が実行されている
         }
     }
     
@@ -887,12 +804,15 @@ async function createNewSortIndex(refPath){
             transaction.update(tgtRef, { sortIndex_Max: newIndex });
             return newIndex
         }).catch(async function(rejectParam){
-            NewSortIndex = rejectParam;
             let docdata = await createSystemDoc(refPath);
             if(docdata){if(typeof docdata.sortIndex_Max =="number"){
-                NewSortIndex = docdata.sortIndex_Max;
+                return docdata.sortIndex_Max;
             }}
+            return rejectParam
         });
+        if((!NewSortIndex)||(NewSortIndex<0)){
+            NewSortIndex=0;
+        }
         myconsolelog(`[Info] fireStore SortIndex update to ${NewSortIndex} : ${refPath}`);
     } catch (err) {
         myconsolelog(`[Error] fireStore SortIndex update : ${refPath} : ${err}`);
@@ -911,6 +831,11 @@ function putdataToIndexedDb_fs(iDbName, refColPath ,refKey, tgtdoc , overwritabl
         if(PandK[3]){if(PandK[3]!="sort"){ tgtdoc.sort = tgtdoc[PandK[3]]; }}
         if( !tgtdoc.sort )  tgtdoc.sort=0;
     }}
+
+    if(tgtdoc.modified){tgtdoc.modified = myTimestampToDate(tgtdoc.modified);}
+    if(tgtdoc.modified_sys){tgtdoc.modified_sys = myTimestampToDate(tgtdoc.modified_sys);}
+    if(tgtdoc.created){tgtdoc.created = myTimestampToDate(tgtdoc.created);}
+
     let retdoc=putdataToIndexedDb(iDbName, PandK[0] ,PandK[1], tgtdoc , overwritableFlg);
     //if(retdoc)retdoc.path=refColPath;
     return retdoc;
@@ -934,7 +859,7 @@ function getKeysFromIndexedDb_fs(iDbName,PandK,rangeStart,rangeEnd0,directionFlg
     if(blockModeFlg){
         return getKeysFromIndexedDb(iDbName,PandK[0],"sortIndex" ,[indxdb_IndxKey1,rangeStart],[indxdb_IndxKey1,rangeEnd],directionFlg);
     }else{
-        return getKeysFromIndexedDb(iDbName,PandK[0],"" ,(PandK[1]+"/"),(PandK[1]+"0"),directionFlg , PandK[1]+"/"+indexedDb_keyName_BlockAry );  // "0"は"/"の次 
+        return getKeysFromIndexedDb(iDbName,PandK[0],"" ,(PandK[1]+"/"),(PandK[1]+"0"),directionFlg , [PandK[1]+"/"+indexedDb_keyName_BlockAry] );  // "0"は"/"の次 
     }
 }
 
@@ -967,15 +892,18 @@ async function addDataToFirestore(refPath , orgdata , docId=""){
     if(orgdata.ownerids){
         orgdata.ownerids = [ ...(orgdata.ownerids) ];
     }
+
+    orgdata.modified_sys = fsdb_serverTimestamp();
+    orgdata.modified = fsdb_serverTimestamp();
+    orgdata.created = fsdb_serverTimestamp();
+    
     // ---送信用オブジェクト（単純な連想配列オブジェクトであることが必要)
     //let tgtdata={}; for (const [key, value] of Object.entries(orgdata)) { tgtdata[key] = value; }
     //let tgtdata = Object.assign({}, orgdata);
-    let tgtdata = { ...orgdata };
     
     // ---
-    tgtdata.modified_sys = fsdb_serverTimestamp();
-    tgtdata.modified = fsdb_serverTimestamp();
-    tgtdata.created = fsdb_serverTimestamp();
+    
+    let tgtdata = { ...orgdata };
     
     try {
         if(docId){
@@ -984,7 +912,8 @@ async function addDataToFirestore(refPath , orgdata , docId=""){
             return docRef;
         }else{
             const tgtColRef = fsdb_collection(firestoredatabase , refPath);
-            return await fsdb_addDoc(tgtColRef, tgtdata ); // docrefを返す
+            const docRef= await fsdb_addDoc(tgtColRef, tgtdata ); // docrefを返す
+            return docRef;
         }
     } catch (e) {
         myconsolelog("[Error] cannot add documents : "+ e);
@@ -1022,8 +951,15 @@ async function updateDataOnFirestore(refPath ,dockey , orgdata ,modifiedTimeFlg=
     }
 }
 
+
 async function deleteDataOnFirestore(refPath ,dockey){
-    myconsolelog("[Info] try delete to firestore : "+refPath+" "+dockey);
+    myconsolelog("[Info] try to send Information for delete firestore-data : "+refPath+" "+dockey);
+    
+    await updateDataOnFirestore(refPath ,dockey , {sort:"delete"} );
+    deleteDataOnFirestore_sub(refPath ,dockey);
+}
+async function deleteDataOnFirestore_sub(refPath ,dockey){
+    myconsolelog("[Info] try to delete on firestore : "+refPath+" "+dockey);
     
     const tgtRef = fsdb_doc(firestoredatabase , refPath,dockey);
     try {
@@ -1037,27 +973,6 @@ async function deleteDataOnFirestore(refPath ,dockey){
 
 
 // --- 以下、廃止--------
-
-async function getDataBlockFromFirestore(tgtquery){
-    let ans={};
-    try {
-        const querySnapshot = await fsdb_getDocs(tgtquery);
-        querySnapshot.forEach((doc) => {
-          let onedata={};
-          //onedata[id]=doc.id;
-          onedata["sort"]=doc.data().sort;
-          onedata["title"]=doc.data().title;
-          onedata["modified"]=doc.data().modified;
-          
-          ans[doc.id]=onedata;
-        });
-    } catch (e) {
-        myconsolelog("[Error] cannot get documents : "+ e);
-    }
-    
-    return ans;
-}
-
 
 
 //=============================================

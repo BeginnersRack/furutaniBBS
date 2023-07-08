@@ -16,22 +16,17 @@ const HtmlElement_myThreadModifyDivId ="bbsThread_modify";
 //-- 以下、JavaScript内で生成するもの
 const HtmlElement_mybutton_submitComment_BtnId ="button_submitComment";
 const HtmlElement_createNewCommentBtn ="button_createNewComment";
+const HtmlElement_submitVoteBtn ="button_voteSelect01";
 
 // ------------------------
 const BBS_Configs={};
+const pageconfig={};
 
-// ------------------------------- コメント表示
-const expandDirection = -1; // 0:順方向(古いものから)  -1:逆方向(新しいものから)
-const expandNumber = 10;      // 1頁あたりの表示行数
 
 // ----------------------------------
 const indexedDbName = "furutaniBBS";
 
-const comment_MaxDatasize = 100;
-const threadContent_MaxDatasize = 100;
 // -----
-const pageconfig={};
-
 //---------------------------------------
 // let HtmlElement_myTableDiv = null;
 async function func_iframeOnload(){ // iframeの親から、onloadイベントで呼び出される
@@ -48,8 +43,32 @@ async function func_iframeOnload(){ // iframeの親から、onloadイベント�
             BBS_Configs.c_threadtypeAry = confAry.PM_BBSconfigs.c_threadtypeAry;
             if(!BBS_Configs.c_threadtypeAry) BBS_Configs.c_threadtypeAry = {proposal:"提案",question:"教えて",share:"共有",report:"報告"};
             
+            BBS_Configs.expandDirection = confAry.PM_BBSconfigs.expandDirection;
+            if(!BBS_Configs.expandDirection) BBS_Configs.expandDirection= -1; // 0:順方向(古いものから)  -1:逆方向(新しいものから)
+            BBS_Configs.expandNumber = confAry.PM_BBSconfigs.expandNumber;
+            if(!BBS_Configs.expandNumber) BBS_Configs.expandNumber = 10;      // 1頁あたりの表示行数
+            
+            BBS_Configs.MaxDatasize_Title = confAry.PM_BBSconfigs.MaxDatasize_Title;
+            if(!BBS_Configs.MaxDatasize_Title ) BBS_Configs.MaxDatasize_Title =100;
+            BBS_Configs.MaxDatasize_overview = confAry.PM_BBSconfigs.MaxDatasize_overview;
+            if(!BBS_Configs.MaxDatasize_overview ) BBS_Configs.MaxDatasize_overview =100;
+            BBS_Configs.MaxDatasize_comment = confAry.PM_BBSconfigs.MaxDatasize_comment;
+            if(!BBS_Configs.MaxDatasize_comment) BBS_Configs.MaxDatasize_comment = 1000;
+            BBS_Configs.MaxDatasize_threadContent = confAry.PM_BBSconfigs.MaxDatasize_threadContent;
+            if(!BBS_Configs.MaxDatasize_threadContent) BBS_Configs.MaxDatasize_threadContent = 1000;
+            
+            BBS_Configs.recordHistorySize = confAry.PM_BBSconfigs.recordHistorySize;
+            if(!BBS_Configs.recordHistorySize) BBS_Configs.recordHistorySize = 0;
+            BBS_Configs.MaxDatasize_History = confAry.PM_BBSconfigs.MaxDatasize_History;
+            if(!BBS_Configs.MaxDatasize_History) BBS_Configs.MaxDatasize_History = 1000;
         }
     } 
+    
+    const storeName="BulletinBoardList/"+BBS_Configs.c_bbsCode+"/threadList";
+    let strdbpath = storeName+"/"+pageconfig.threadCode+"/contents";
+    
+    pageconfig.threadConfig = await window.parent.getdataFromIndexedDb(indexedDbName , strdbpath ,"_system");
+    
     
     let tgtElem;
     // --
@@ -58,14 +77,13 @@ async function func_iframeOnload(){ // iframeの親から、onloadイベント�
     
     //---------
     
-    const storeName="BulletinBoardList/"+pageconfig.bbsCode+"/threadList";
+
     //pageconfig.threadDocInfo = await window.parent.getdataFromIndexedDb(indexedDbName ,storeName ,pageconfig.threadCode);
     pageconfig.threadDocInfo = await window.parent.fb_getDataFromFirestoreDb_singleDoc(storeName,pageconfig.threadCode).catch(function(reject){
         console.log("[Error] getDataFromFirestoreDb_singleDoc : "+storeName +" "+ pageconfig.threadCode +" : "+ reject);
         return null;
     });
     
-    let strdbpath = storeName+"/"+pageconfig.threadCode+"/contents";
     pageconfig.threadConfig = await window.parent.fb_getDataFromFirestoreDb_singleDoc(strdbpath,"_system").catch(function(reject){
         console.log("[Error] getDataFromFirestoreDb_singleDoc : "+strdbpath +" _system : "+ reject);
         return null;
@@ -160,7 +178,7 @@ async function dispBBSList(){
     let tgtElem = document.getElementById(HtmlElement_myTableDivId);
     if(!tgtElem){return;}
     
-    let strdbpath = "BulletinBoardList/"+pageconfig.bbsCode+"/threadList/"+pageconfig.threadCode+"/discussion";
+    let strdbpath = "BulletinBoardList/"+BBS_Configs.c_bbsCode+"/threadList/"+pageconfig.threadCode+"/discussion";
     
     let dispContents="";
     //----------------
@@ -168,9 +186,9 @@ async function dispBBSList(){
     dispContents+="<table width=100% border='1'>";
     dispContents+="<tr> <th width='120px'>区分/タイトル</th> <th>内容</th> <th width='200px'>投稿者</th> <th width='200px'>投稿日</th> </tr>";
     
-    let itempos = counterOfPageNumber * expandNumber; //1件目を0と数える
-    let itemnumber = expandNumber;
-    if(expandDirection<0){
+    let itempos = counterOfPageNumber * BBS_Configs.expandNumber; //1件目を0と数える
+    let itemnumber = BBS_Configs.expandNumber;
+    if(BBS_Configs.expandDirection<0){
         itempos = 0-itempos-1;
         itemnumber = 0-itemnumber;
     }
@@ -208,7 +226,7 @@ async function dispBBSList(){
     //------------------
     let btn1 = document.getElementById("button_expandPageBackward");
     if(btn1){
-        if(itempos==expandDirection){
+        if(itempos==BBS_Configs.expandDirection){
             btn1.disabled = "disabled";
         }else{
             btn1.disabled = null;
@@ -216,7 +234,7 @@ async function dispBBSList(){
     }
     let btn2 = document.getElementById("button_expandPageForward");
     if(btn2){
-        if(keylist.length==expandNumber){
+        if(keylist.length==BBS_Configs.expandNumber){
             btn2.disabled = null;
         }else{
             btn2.disabled = "disabled";
@@ -249,7 +267,7 @@ async function dispThreadInfos(editmode=false){
     if(!editmode){
         dispContents+= threadDoc.title;
     }else{
-        dispContents+=`<input type="text" id="ThreadInfoInput_title" name="title" maxlength="100" size="40" value="`;
+        dispContents+=`<input type="text" id="ThreadInfoInput_title" name="title" maxlength="${BBS_Configs.MaxDatasize_Title}" size="40" value="`;
         dispContents+=``+(threadDoc.title ? threadDoc.title : "")+`">`;
     }
     dispContents+= "</td></tr>";
@@ -354,29 +372,44 @@ async function dispThreadInfos(editmode=false){
     let tgtElem_BtnForCommentOpen;
     let tgtElem_BtnForThreadOpen;
     if(editmode){
-        createNewComment_hide(); // コメント投稿の入力欄を閉じる
-        tgtElem_BtnForCommentOpen = document.getElementById(HtmlElement_createNewCommentBtn);
-        if(tgtElem_BtnForCommentOpen){ tgtElem_BtnForCommentOpen.disabled=true; }
-        
-        updateThread_hide(); // "スレッド内容の入力欄を閉じる
-        tgtElem_BtnForThreadOpen = document.getElementById("button_modifyThread_New"); 
-        if(tgtElem_BtnForThreadOpen){ tgtElem_BtnForThreadOpen.disabled=true; }
-
+        initDispSections(true);
     }else{
-        tgtElem_BtnForCommentOpen = document.getElementById(HtmlElement_createNewCommentBtn);
-        if(tgtElem_BtnForCommentOpen){ tgtElem_BtnForCommentOpen.disabled=false; }
-
-        tgtElem_BtnForThreadOpen = document.getElementById("button_modifyThread_New"); 
-        if(tgtElem_BtnForThreadOpen){ tgtElem_BtnForThreadOpen.disabled=true; }
+        initDispSections(false);
     }
     
 }
+function initDispSections(boolBtn=False){
+        
+        createNewComment_hide(); // コメント投稿の入力欄を閉じる
+        updateThread_hide(); // "スレッド内容の入力欄を閉じる
+        
+        initAllButtons(boolBtn);
+}
+function initAllButtons(boolBtn=False){
+        BtnDisable(HtmlElement_createNewCommentBtn,boolBtn);
+        BtnDisable("button_modifyThread_New",boolBtn);
+        BtnDisable(HtmlElement_submitVoteBtn,boolBtn);
+        BtnDisable("button_ThreadInfo_modify",boolBtn);
+        BtnDisable("button_modifyThread_New",boolBtn);
+        
+        const elems = document.getElementsByClassName("btns_disphide");
+        for (let i=0, len=elems.length|0; i<len; i=i+1|0) {
+            elems[i].disabled = boolBtn;
+        }
+        //setStyleRule("btns_disphide",propStr);
+}
+function BtnDisable(strId,setbool=false){
+        let tgtElem = document.getElementById(strId);
+        if(tgtElem){ tgtElem.disabled=setbool; }
+}
+
+
 
 
 async function updateThreadInfo_preExec(){
     let strMsg="";
-    let docdata1={};
-    let docdata2={};
+    let docdata1={}; // スレッド文書
+    let docdata2={}; // スレッド設定文書（/contents/_system）
     
     let nochangeflg=1;
     let ngflg=0;
@@ -390,6 +423,8 @@ async function updateThreadInfo_preExec(){
     if(!tgtElem_newInput){ ngflg=1; strMsg+="notFoundError：ThreadInfoInput_title\n"; }else{
         if(tgtElem_newInput.value==""){
             ngflg=1;strMsg+="タイトルを入力してください。\n";
+        }else if(tgtElem_newInput.value.length>=BBS_Configs.MaxDatasize_Title){
+            ngflg=1;strMsg+="タイトルが長すぎます。\n";
         }else{
             if(tgtElem_newInput.value!=threadDoc.title){
                 nochangeflg=0;
@@ -402,6 +437,8 @@ async function updateThreadInfo_preExec(){
     if(!tgtElem_newInput){ ngflg=1; strMsg+="notFoundError：ThreadInfoInput_overview\n"; }else{
         if(tgtElem_newInput.value==""){
             ngflg=1;strMsg+="概要を入力してください。\n";
+        }else if(tgtElem_newInput.value.length>=BBS_Configs.MaxDatasize_overview){
+            ngflg=1;strMsg+="タイトルが長すぎます。\n";
         }else{
             if(tgtElem_newInput.value!=threadDoc.overview){
                 nochangeflg=0;
@@ -461,6 +498,9 @@ async function updateThreadInfo_preExec(){
 
 
     // --------------------------docdata2
+    const storeName="BulletinBoardList/"+BBS_Configs.c_bbsCode+"/threadList"; 
+    const sortMaxP = window.parent.fb_getMaxOfSortIndex(storeName+"/"+pageconfig.threadCode+"/contents");
+       // docdata2(/contents/_system)が存在しない場合に新規作成するために getMaxOfSortIndex()を呼び出している
     
     tgtElem_newInput = document.getElementById("ThreadInfoInput_voteoptions");
     if(!tgtElem_newInput){ ngflg=1; strMsg+="notFoundError：ThreadInfoInput_voteoptions\n"; }else{
@@ -513,12 +553,12 @@ async function updateThreadInfo_preExec(){
         return null;
     }
     // --------------------------
-    
+    const sortMax = await sortMaxP;
     updateThreadInfo_exec( docdata1,docdata2 );
 }
 
 async function updateThreadInfo_exec( newdocdata1 ,newdocdata2 ){
-    const storeName="BulletinBoardList/"+pageconfig.bbsCode+"/threadList"; 
+    const storeName="BulletinBoardList/"+BBS_Configs.c_bbsCode+"/threadList"; 
     const loginUser = window.parent.fb_getLoginUser();
     
     // ---
@@ -650,7 +690,7 @@ async function dispVoteCtrl(){
     dispContents+="<table width=100%>";
     dispContents+="<tr><th colspan='1'>投票</th>";
     
-    strvl =`<input type="button" id="button_voteSelect01" value="投票を登録" onclick="updateVoteSelect01(`+ myVoteIndx.toString() +`);" />`;
+    strvl =`<input type="button" id="${HtmlElement_submitVoteBtn}" value="投票を登録" onclick="updateVoteSelect01(`+ myVoteIndx.toString() +`);" />`;
     dispContents+="<td>"+strvl+"</td>";
     
     dispContents+="<td>"+strSl+"</td>";
@@ -674,7 +714,7 @@ async function dispVoteCtrl(){
     tgtElem.insertAdjacentHTML('beforeend', dispContents );
 }
 async function getVodeDatas(){
-    const storeName="BulletinBoardList/"+pageconfig.bbsCode+"/threadList";
+    const storeName="BulletinBoardList/"+BBS_Configs.c_bbsCode+"/threadList";
     const strdbpath = storeName+"/"+pageconfig.threadCode+"/vote";
 
     let data = await window.parent.fb_getDataFromFirestoreDb( strdbpath ,0,0,false); 
@@ -729,7 +769,7 @@ async function updateVoteSelect01(defaultIndx=-1){
         return;
     }
     //-----実行
-    const storeName="BulletinBoardList/"+pageconfig.bbsCode+"/threadList";
+    const storeName="BulletinBoardList/"+BBS_Configs.c_bbsCode+"/threadList";
     const strdbpath = storeName+"/"+pageconfig.threadCode+"/vote";
     
     const loginUser = window.parent.fb_getLoginUser();
@@ -939,7 +979,7 @@ function getStyleRule(name) {
   return null;
 }
 
-// =====================
+// ===================== スレッド記事内容(Details)の表示 ===============
 let maxsortval=0;
 async function dispDetails(){
     let tgtElem = document.getElementById(HtmlElement_myDetailsDivId);
@@ -952,7 +992,7 @@ async function dispDetails(){
     let dispContents="";
     //----
     
-    const storeName="BulletinBoardList/"+pageconfig.bbsCode+"/threadList";
+    const storeName="BulletinBoardList/"+BBS_Configs.c_bbsCode+"/threadList";
     let strdbpath = storeName+"/"+pageconfig.threadCode+"/contents";
     
     let data_config = pageconfig.threadConfig;
@@ -982,10 +1022,18 @@ async function dispDetails(){
             
             
             if(tgtdoc.imagelink){
-              dispContents+=`<tr><td><img src="`+tgtdoc.imagelink+`"`;   // max-height: 300px;
-              dispContents+=` style="display: block; margin: auto; resize: auto;`;
-              if(tgtdoc.imageheight){  dispContents+=` height:`+(tgtdoc.imageheight)+`px;`;  }
-              dispContents+=`"></td><td></td></tr>`;
+               if(tgtdoc.imagelinktype == "image"){
+                  dispContents+=`<tr><td><img src="`+tgtdoc.imagelink+`"`;   // max-height: 300px;
+                  dispContents+=` style="display: block; margin: auto; resize: auto;`;
+                  if(tgtdoc.imageheight){  dispContents+=` height:`+(tgtdoc.imageheight)+`px;`;  }
+                  dispContents+=`"`;
+                  dispContents+=` alt="image" title="`+(tgtdoc.imagelinktext ? tgtdoc.imagelinktext : "(image)" )+`"`;
+                  dispContents+=`></td><td></td></tr>`;
+               }else{ // Link
+                  dispContents+=`<tr><td><a href="`+tgtdoc.imagelink+`"`;
+                  dispContents+=` target="_blank" rel="noopener noreferrer"`;
+                  dispContents+=`>`+(tgtdoc.imagelinktext ? tgtdoc.imagelinktext : "(link)" )+`</a></td><td></td></tr>`;
+               }
             }
             
             //---
@@ -1006,16 +1054,18 @@ async function dispDetails(){
     
     //----
     tgtElem.innerHTML ="";
-    tgtElem.insertAdjacentHTML('beforeend', dispContents );
+    try{
+        tgtElem.insertAdjacentHTML('beforeend', dispContents );
+    }catch(err){
+        window.parent.fb_myconsolelog("データに異常があります："+err.messag);
+        alert("データに異常があります");
+    }
     //----
     
     //----
 }
 
 
-function dispBBSControllBtn1(){
-
-}
 function updateThread_sw(strId3){ // strId3="(threadCode)/contents/(documentId)"
     const strId_ary = strId3.split("/");
     const strId = strId_ary[strId_ary.length-1];
@@ -1024,7 +1074,7 @@ function updateThread_sw(strId3){ // strId3="(threadCode)/contents/(documentId)"
     const loginUser = window.parent.fb_getLoginUser();
     if (pageconfig.threadDocInfo.ownerids){
         if (pageconfig.threadDocInfo.ownerids.indexOf(loginUser.email) >=0 ){
-            dispContents+=`<input type="button" id="button_modifyThread_`+strId+`" value="スレッド投稿内容を変更"`;
+            dispContents+=`<input type="button" id="button_modifyThread_`+strId+`" class="btns_disphide" value="スレッド投稿内容を変更"`;
             dispContents+=` onclick="updateThread_disp('`+strId+`');" />`;
         }
     }
@@ -1045,7 +1095,7 @@ async function updateThread_disp(strId){
     let contentDoc = {};
     if(strId!=""){
         strBtnVal="更新";
-        const storeName="BulletinBoardList/"+pageconfig.bbsCode+"/threadList";
+        const storeName="BulletinBoardList/"+BBS_Configs.c_bbsCode+"/threadList";
         contentDoc = await window.parent.getdataFromIndexedDb(indexedDbName ,storeName ,pageconfig.threadCode+"/contents/"+strId);    
     }else{
         strBtnVal="登録";
@@ -1054,24 +1104,36 @@ async function updateThread_disp(strId){
     }
     
     dispContents+=`章タイトル：<input type="text" id="updateThread_disp_chapterTitle" name="chapterTitle" maxlength="100" size="40" value="`;
-    dispContents+= contentDoc.chaptertitle +`"></input></ br>`;
+    dispContents+= (contentDoc.chaptertitle ? contentDoc.chaptertitle :"") +`"></input></ br>`;
     dispContents+=`<textarea id="updateThread_disp_textarea" style="width:100%; height:80px;">`;
-    dispContents+= contentDoc.details +`</textarea>`;
-    dispContents+=`添付画像Link：　Height `; 
-    dispContents+=`<span><input type="text" id="updateThread_disp_imageheight" name="imageheight" maxlength="6" size="7" value="`;
-    dispContents+=   (contentDoc.imageheight ? contentDoc.imageheight : "") +`"></input> `;
-    dispContents+=  `<div><div class="tooltip" id="tooltip_imagelink_height" data-allow="left" data-left="260">`; 
-    dispContents+=  `画像サイズを高さで指定します。指定ないときは原寸表示します。</div></div></span> `; 
-    dispContents+=`<span>`
-    dispContents+= ` <div><div class="tooltip" data-allow="up">外部サイトの画像URLを指定します。OneDrive保存の画像の場合は「埋め込み」でURLを取得してください</div></div>`
-    dispContents+= `<input type="text" id="updateThread_disp_imagelink" name="imagelink" maxlength="300" size="120" value="`;
-    dispContents+=  (contentDoc.imagelink ? contentDoc.imagelink : "") +`" placeholder="画像のURL / 埋め込みパス"></input> `;
-    dispContents+=`</span>`;
-    dispContents+=`<input type="button" value="`+strBtnVal+`" onclick="updateThread_preExec('`+strId+`');" />`;
+    dispContents+= (contentDoc.details ? contentDoc.details : "") +`</textarea>`;
+    dispContents+=`<div>`; 
+    dispContents+= `＜添付画像Link＞`; 
+    dispContents+=  `　<span><select id="updateThread_disp_imageType">`;
+    dispContents+=     `<option value="image"`+(contentDoc.imagelinktype=="image" ? " selected" : "")+`>画像を表示</option>`;
+    dispContents+=     `<option value="link"`+ (contentDoc.imagelinktype!="image" ? " selected" : "")+`>リンクを表示</option>`;
+    dispContents+=   `</select></span> `;
+    dispContents+=  `　<span>text:<input type="text" id="updateThread_disp_imageText" name="imagetext" maxlength="30" size="15" value="`;
+    dispContents+=      (contentDoc.imagelinktext ? contentDoc.imagelinktext : "") +`"></input></span> `;
+    dispContents+=  `　<span>Height `; 
+    dispContents+=    `<input type="text" id="updateThread_disp_imageheight" name="imageheight" maxlength="6" size="7" value="`;
+    dispContents+=      (contentDoc.imageheight ? contentDoc.imageheight : "") +`"></input> `;
+    dispContents+=    `<div><div class="tooltip" id="tooltip_imagelink_height" data-allow="left" data-left="600">`; 
+    dispContents+=    `画像サイズを高さで指定します。指定ないときは原寸表示します。</div></div></span> `; 
+
+    dispContents+= `<span>`;
+    dispContents+=   `<div><div class="tooltip" data-allow="up">外部サイトの画像/リンクURLを指定します。OneDrive保存の画像の場合は「埋め込み」でURLを取得してください<br>officeファイルの場合は「共有」から「リンクのコピー」をします。共有の設定で"編集可能"→"表示可能"にしておくようにしましょう。</div></div>`
+    dispContents+=   `<input type="text" id="updateThread_disp_imagelink" name="imagelink" maxlength="300" size="120" value="`;
+    dispContents+=    (contentDoc.imagelink ? contentDoc.imagelink : "") +`" placeholder="画像のURL / 埋め込みパス"></input> `;
+    dispContents+= `</span></div>`;
+    dispContents+=`<input type="button" value="`+strBtnVal+`" onclick="updateThread_preExec('`+strId+`');" />`;  // 登録/更新
     dispContents+=`　表示順:<input type="text" id="updateThread_disp_sortval" name="sort" maxlength="4" size="4" value="`+contentDoc.sort+`">`;
-    dispContents += `　<input type="button" value="入力を破棄して閉じる" onclick="updateThread_hide();" />`;
+    dispContents += `　<input type="button" value="入力を破棄して閉じる" onclick="updateThread_hide(1);" />`;
     
     //------
+    initDispSections(true);
+    
+    
     tgtElem.innerHTML="";
     tgtElem.insertAdjacentHTML('beforeend', dispContents );
     tgtElem.style.display ="block";
@@ -1082,36 +1144,16 @@ async function updateThread_disp(strId){
     tgtElem_i = document.getElementById("updateThread_disp_imageheight");
     if(tgtElem_i){  setDispInfoToolToInputText(tgtElem_i);  }
     
-    
-    // ------
-    let tgtElem_btn = document.getElementById(HtmlElement_createNewCommentBtn);
-    if(tgtElem_btn){ tgtElem_btn.disabled=true; }
-    
-    createNewComment_hide(); // コメント投稿の入力欄を閉じる
-    let tgtElem_BtnForCommentOpen = document.getElementById(HtmlElement_createNewCommentBtn);
-    if(tgtElem_BtnForCommentOpen){ tgtElem_BtnForCommentOpen.disabled=true; }
-    
-    let tgtElem_BtnForThreadInfoOpen;
-    tgtElem_BtnForThreadInfoOpen = document.getElementById("button_ThreadInfo_modify");
-    if(tgtElem_BtnForThreadInfoOpen){ tgtElem_BtnForThreadInfoOpen.disabled=true; }
-    tgtElem_BtnForThreadInfoOpen = document.getElementById("button_modifyThread_New");
-    if(tgtElem_BtnForThreadInfoOpen){ tgtElem_BtnForThreadInfoOpen.disabled=true; }
 }
-function updateThread_hide(){
+function updateThread_hide(allflg=0){
     let tgtElem = document.getElementById(HtmlElement_myThreadModifyDivId);
     if(tgtElem){
         tgtElem.style.display ="none";
         tgtElem.innerHTML="";
     }
     
-    let tgtElem_BtnForCommentOpen = document.getElementById(HtmlElement_createNewCommentBtn);
-    if(tgtElem_BtnForCommentOpen){ tgtElem_BtnForCommentOpen.disabled=false; }
-
-    let tgtElem_BtnForThreadInfoOpen;
-    tgtElem_BtnForThreadInfoOpen = document.getElementById("button_ThreadInfo_modify");
-    if(tgtElem_BtnForThreadInfoOpen){ tgtElem_BtnForThreadInfoOpen.disabled=false; }
-    tgtElem_BtnForThreadInfoOpen = document.getElementById("button_modifyThread_New");
-    if(tgtElem_BtnForThreadInfoOpen){ tgtElem_BtnForThreadInfoOpen.disabled=false; }
+    BtnDisable("button_modifyThread_New",false);
+    if(allflg) initAllButtons(false);
 }
 async function updateThread_preExec(strId){
     let strMsg="";
@@ -1119,12 +1161,17 @@ async function updateThread_preExec(strId){
     if(tgtElem_newInput){
         strMsg = tgtElem_newInput.value;
     }
-    strMsg = strMsg.substring(0,threadContent_MaxDatasize);
-    if(strMsg.trim()==""){
-        window.parent.fb_myconsolelog("[Info] 登録処理を中断：内容が入力されていません");
-        alert("値を入力してください");
-        return null;
+    if(strMsg.length>=BBS_Configs.MaxDatasize_threadContent){
+            alert (`本文が長すぎます。\n ` + (strMsg.length.toString()) +` > ${(BBS_Configs.MaxDatasize_threadContent)}`);
+            return null;
     }
+    strMsg = strMsg.substring(0,BBS_Configs.MaxDatasize_threadContent);
+    //if(strMsg.trim()==""){
+    //    window.parent.fb_myconsolelog("[Info] 登録処理を中断：内容が入力されていません");
+    //    alert("本文の値を入力してください");
+    //    return null;
+    //}
+
     
     let newsortval=-1;
     const tgtElem_newSortval = document.getElementById("updateThread_disp_sortval");
@@ -1143,8 +1190,12 @@ async function updateThread_preExec(strId){
     const tgtElem_chapterTitle = document.getElementById("updateThread_disp_chapterTitle");
     if(tgtElem_chapterTitle){
         strChapterTitle = tgtElem_chapterTitle.value;
+        if(strChapterTitle.length>=BBS_Configs.MaxDatasize_Title){
+            ngflg=1;strMsg+="章タイトルが長すぎます。\n";
+            return null;
+        }
     }
-    strChapterTitle = strChapterTitle.substring(0,threadContent_MaxDatasize);
+    strChapterTitle = strChapterTitle.substring(0,BBS_Configs.MaxDatasize_Title);
     
     
     let strImageLink="";
@@ -1166,11 +1217,25 @@ async function updateThread_preExec(strId){
         return null;
     }
     
+    let strImageLinkType="";
+    const tgtElem_chapterImageType = document.getElementById("updateThread_disp_imageType");
+    if(tgtElem_chapterImageType){
+        strImageLinkType = tgtElem_chapterImageType.value;
+    }
+    strImageLinkType = strImageLinkType.substring(0,10);
+    
+    let strImageLinkText="";
+    const tgtElem_chapterImageText = document.getElementById("updateThread_disp_imageText");
+    if(tgtElem_chapterImageText){
+        strImageLinkText = tgtElem_chapterImageText.value;
+    }
+    strImageLinkText = strImageLinkText.substring(0,30);
+    
     
     // --------------------------
     let contentDoc={};
     if(strId!=""){
-        const storeName="BulletinBoardList/"+pageconfig.bbsCode+"/threadList";
+        const storeName="BulletinBoardList/"+BBS_Configs.c_bbsCode+"/threadList";
         contentDoc = await window.parent.getdataFromIndexedDb(indexedDbName ,storeName ,pageconfig.threadCode+"/contents/"+strId);
     }
     // ---------------
@@ -1195,13 +1260,22 @@ async function updateThread_preExec(strId){
     docdata.chaptertitle=strNewChapterTitle;
 
     // -- 画像Link --
-    const strNewImageLink=window.parent.escapeHtml(strImageLink);
-    if(contentDoc.imagelink != strNewImageLink){ nochangeflg=0; }
-    docdata.imagelink=strNewImageLink;
-    if(contentDoc.imageheight != numImageHeight){ nochangeflg=0; }
-    docdata.imageheight = ( numImageHeight==numImageHeight ? numImageHeight : 0);
-
+    docdata.imagelink= window.parent.escapeHtml(strImageLink); // encodeURIComponent()?
+    if(contentDoc.imagelink != docdata.imagelink){ nochangeflg=0; }
     
+    docdata.imageheight = ( numImageHeight==numImageHeight ? numImageHeight : 0);
+    if(contentDoc.imageheight != docdata.imageheight){ nochangeflg=0; }
+    
+    docdata.imagelinktype = window.parent.escapeHtml( strImageLinkType );
+    if(contentDoc.imagelinktype != docdata.imagelinktype){ nochangeflg=0; }
+    
+    docdata.imagelinktext = window.parent.escapeHtml( strImageLinkText );
+    if(contentDoc.imagelinktext != docdata.imagelinktext){ nochangeflg=0; }
+    
+    
+    if(docdata.imagelink.length>=300){
+        window.parent.fb_myconsolelog("[Warning] too long URL(ImageLink). "+docdata.imagelink.length);
+    }
     // --------------
     if(strId!="" && nochangeflg){
         window.parent.fb_myconsolelog("[Info] 登録処理を中断：内容が更新されていません");
@@ -1214,7 +1288,7 @@ async function updateThread_preExec(strId){
 }
 
 async function updateThreadContent_exec( strId , contentDoc , newdocdata ){
-    const storeName="BulletinBoardList/"+pageconfig.bbsCode+"/threadList";
+    const storeName="BulletinBoardList/"+BBS_Configs.c_bbsCode+"/threadList";
     const loginUser = window.parent.fb_getLoginUser();
     
     const strMode = (strId!="" ? "更新" : "新規");
@@ -1228,8 +1302,14 @@ async function updateThreadContent_exec( strId , contentDoc , newdocdata ){
     if(strId!=""){
         const dateDetailsOld= window.parent.myDateTimeFormat(contentDoc.modified);
         const strDetailsOldHd = "("+dateDetailsOld+") ";
-        newdocdata.details_old = strDetailsOldHd + "<br />\n" + contentDoc.details +"<br />\n" + contentDoc.details_old;
-    }else{
+        if(BBS_Configs.recordHistorySize>=0){
+            let recordStr = strDetailsOldHd + "<br />\n";
+            if(BBS_Configs.recordHistorySize!=0){
+                recordStr +=  (contentDoc.details).substring(0,BBS_Configs.recordHistorySize) +"<br />\n" 
+            }
+            newdocdata.details_old = (recordStr + contentDoc.details_old).substring(0,BBS_Configs.MaxDatasize_History);
+        }
+    }else{ // New
         newdocdata.details_old = "";
     }
     // ----------
@@ -1237,6 +1317,7 @@ async function updateThreadContent_exec( strId , contentDoc , newdocdata ){
         return null;
     }
     // ----------
+    
     let flgOk=0;
     try {
         let try1p;
@@ -1281,8 +1362,11 @@ async function updateThreadContent_exec( strId , contentDoc , newdocdata ){
         
         //func_expandPageNext(0);
         
-        updateThread_hide();
+        initDispSections(false);
+        
         dispDetails();
+        
+        
     }
 }
 
@@ -1323,36 +1407,36 @@ function func_expandPageNext(directionFlg){
 
 
 function open_createNewComment(){
+    initDispSections(true);
 
     let tgtElem_newInput = document.getElementById(HtmlElement_myNewDetailsDivId);
     if(tgtElem_newInput){
-        let dispContents=createHtmlElem_commentForEdit(null); //  myNewDetailsTextareaId と myNewTitleTextId を含むHTLM
+        let dispContents=createHtmlElem_commentForEdit(pageconfig); //  myNewDetailsTextareaId と myNewTitleTextId を含むHTLM
         
         // コントロール
         dispContents+=`<input type="button" id="`+HtmlElement_mybutton_submitComment_BtnId+`" value="コメント投稿" onclick="createNewComment_submit();" />`;
-        dispContents += `　<input type="button" value="入力を破棄して閉じる" onclick="createNewComment_hide();" />`;
+        dispContents += `　<input type="button" value="入力を破棄して閉じる" onclick="createNewComment_hide(1);" />`;
         // ---
         tgtElem_newInput.innerHTML =dispContents;
         tgtElem_newInput.style.display ="block";
     }
     
-    let tgtElem_BtnForOpen = document.getElementById(HtmlElement_createNewCommentBtn);
-    if(tgtElem_BtnForOpen){
-        tgtElem_BtnForOpen.disabled=true;
-    }
+    
+    //const tgtElem_ttl = document.getElementById(HtmlElements_comment.myNewTitleTextId);
+    //if(tgtElem_ttl){
+    //    tgtElem_ttl.style.display ="block";
+    //}
 
 }
-function createNewComment_hide(){
+function createNewComment_hide(allflg=0){
     let tgtElem_newInput = document.getElementById(HtmlElement_myNewDetailsDivId);
     if(tgtElem_newInput){
         tgtElem_newInput.style.display ="none";
         //tgtElem_newInput.innerHTML="";
     }
     
-    let tgtElem_BtnForOpen = document.getElementById(HtmlElement_createNewCommentBtn);
-    if(tgtElem_BtnForOpen){
-        tgtElem_BtnForOpen.disabled=false;
-    }
+    BtnDisable(HtmlElement_createNewCommentBtn,false);
+    if(allflg) initAllButtons(false);
 }
 
 async function createNewComment_submit(){
@@ -1361,7 +1445,11 @@ async function createNewComment_submit(){
     if(tgtElem_newInput){
         strMsg = tgtElem_newInput.value;
     }
-    strMsg = strMsg.substring(0,comment_MaxDatasize);
+    if(strMsg.length>=BBS_Configs.MaxDatasize_comment){
+            ngflg=1;strMsg+="本文が長すぎます。\n";
+            return null;
+    }
+    strMsg = strMsg.substring(0,BBS_Configs.MaxDatasize_comment);
     if(strMsg.trim()==""){
         window.parent.fb_myconsolelog("[Info] 登録処理を中断：内容が入力されていません");
         alert("値を入力してください");
@@ -1377,7 +1465,7 @@ async function createNewComment_submit(){
     
     //---------
     const loginUser = window.parent.fb_getLoginUser();
-    const strdbpath = "BulletinBoardList/"+pageconfig.bbsCode+"/threadList/"+pageconfig.threadCode+"/discussion";
+    const strdbpath = "BulletinBoardList/"+BBS_Configs.c_bbsCode+"/threadList/"+pageconfig.threadCode+"/discussion";
 
     let docdata={};
     
@@ -1426,8 +1514,8 @@ async function createNewComment_submit(){
     }
     
     // ---
-    createNewComment_hide();
     setTimeout( dispBBSList ,100);
+    createNewComment_hide(1);
     
 }
 

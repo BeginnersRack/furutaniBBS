@@ -1,5 +1,7 @@
 // import { HtmlElements_comment,createHtmlElem_commentForEdit } from "./bbs_comment_m.js";
 
+//参照元：bbs_comment.js , bbs_thread.js
+
 export const HtmlElements_comment={};
 HtmlElements_comment.myNewDetailsTextareaId ="bbsComment_NewDetailsText";
 HtmlElements_comment.myNewTitleTextId ="bbsComment_NewTitleText";

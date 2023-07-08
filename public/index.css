@@ -12,6 +12,6 @@ body {
 }
 #iframe_main{
   width: 100%;
-  height:calc(100% - 50px);
+  height:calc(100% - 55px);
   border: none;
 }

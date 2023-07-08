@@ -2,7 +2,8 @@
 //---
 const pageconfig={};
 
-const BBS_Configs={};
+const BBS_Configs={}; // func_iframeOnload()内で別ファイルから取得する
+
 
 //---------------------------------------
 let HtmlElement_myTableDiv = null;
@@ -32,10 +33,25 @@ async function func_iframeOnload(){ // iframeの親から、onloadイベント�
     if(confAry){
         if(confAry.PM_BBSconfigs){
             BBS_Configs.c_bbsCode = confAry.PM_BBSconfigs.c_bbsCode;
-            BBS_Configs.comment_MaxDatasize = confAry.PM_BBSconfigs.comment_MaxDatasize;
+            if(!BBS_Configs.c_bbsCode) BBS_Configs.c_bbsCode = pageconfig.FilenameCode;
+            
             BBS_Configs.HtmlElement_myTableDivId = confAry.PM_BBSconfigs.HtmlElement_myTableDivId;
             BBS_Configs.HtmlElement_myControllDivId = confAry.PM_BBSconfigs.HtmlElement_myControllDivId;
             BBS_Configs.HtmlElement_myNewDetailsDivId = confAry.PM_BBSconfigs.HtmlElement_myNewDetailsDivId;
+            
+            BBS_Configs.expandDirection = confAry.PM_BBSconfigs.expandDirection;
+            if(!BBS_Configs.expandDirection) BBS_Configs.expandDirection= -1; // 0:順方向(古いものから)  -1:逆方向(新しいものから)
+            BBS_Configs.expandNumber = confAry.PM_BBSconfigs.expandNumber;
+            if(!BBS_Configs.expandNumber) BBS_Configs.expandNumber = 10;      // 1頁あたりの表示行数
+            
+            BBS_Configs.MaxDatasize_Title = confAry.PM_BBSconfigs.MaxDatasize_Title;
+            if(!BBS_Configs.MaxDatasize_Title ) BBS_Configs.MaxDatasize_Title =100;
+            BBS_Configs.MaxDatasize_overview = confAry.PM_BBSconfigs.MaxDatasize_overview;
+            if(!BBS_Configs.MaxDatasize_overview ) BBS_Configs.MaxDatasize_overview =100;
+            
+            BBS_Configs.c_threadtypeAry = confAry.PM_BBSconfigs.c_threadtypeAry;
+            if(!BBS_Configs.c_threadtypeAry) BBS_Configs.c_threadtypeAry = {proposal:"提案",question:"教えて",share:"共有",report:"報告"};
+            
         }
     } 
     
@@ -63,8 +79,6 @@ function moveFramePage(pagename,threadCode,bbsCode=BBS_Configs.c_bbsCode){
 }
 
 // -------------------------------
-const expandDirection = -1; // 0:順方向(古いものから)  -1:逆方向(新しいものから)
-const expandNumber = 10;      // 1頁あたりの表示行数
 let counterOfPageNumber = 0; // 表示頁数(最初は０)
 // -------------------------------
 async function dispBBSList(){
@@ -82,11 +96,11 @@ async function dispBBSList(){
     let dispContents="";
     //----
     dispContents+="<table width=100%>";
-    dispContents+="<tr> <th>種別</th> <th>タイトル</th> <th>担当</th> <th>内容</th> </tr>";
+    dispContents+="<tr> <th style='min-width:50px'>種別</th> <th style='min-width:100px'>タイトル</th> <th>担当</th> <th>内容</th> </tr>";
     
-    let itempos = counterOfPageNumber * expandNumber; //1件目を0と数える
-    let itemnumber = expandNumber;
-    if(expandDirection<0){
+    let itempos = counterOfPageNumber * BBS_Configs.expandNumber; //1件目を0と数える
+    let itemnumber = BBS_Configs.expandNumber;
+    if(BBS_Configs.expandDirection<0){
         itempos = 0-itempos-1;
         itemnumber = 0-itemnumber;
     }
@@ -101,7 +115,17 @@ async function dispBBSList(){
         dispContents += `<tr myinfo_pos="${keylist[key]}" myinfo_sort="${tgtdoc.sort}">`;
         
         let strT = strH;
-        if(!strT) { strT = tgtdoc.threadtype; if(!strT) { strT=""; } }
+        if(!strT) { 
+            strT = tgtdoc.threadtype; 
+            if(!strT) { strT=""; 
+            }else{
+                if(BBS_Configs.c_threadtypeAry){
+                    if( strT in BBS_Configs.c_threadtypeAry){
+                        strT = BBS_Configs.c_threadtypeAry[strT];
+                    }
+                }
+            }
+        }
         dispContents += `<td>${strT}</td>`;
         
         if(flgDisp){
@@ -127,7 +151,7 @@ async function dispBBSList(){
     
     let btn1 = document.getElementById("button_expandPageBackward");
     if(btn1){
-        if(itempos==expandDirection){
+        if(itempos==BBS_Configs.expandDirection){
             btn1.disabled = "disabled";
         }else{
             btn1.disabled = null;
@@ -135,7 +159,7 @@ async function dispBBSList(){
     }
     let btn2 = document.getElementById("button_expandPageForward");
     if(btn2){
-        if(keylist.length==expandNumber){
+        if(keylist.length==BBS_Configs.expandNumber){
             btn2.disabled = null;
         }else{
             btn2.disabled = "disabled";
@@ -227,7 +251,7 @@ async function createNewThread_submit(){
         if(tgtElem_newInput.value==""){
             ngflg=1;strMsg+="タイトルを入力してください。\n";
         }else{
-                docdata1.title = tgtElem_newInput.value.substring(0,BBS_Configs.comment_MaxDatasize);
+                docdata1.title = tgtElem_newInput.value.substring(0,BBS_Configs.MaxDatasize_Title );
         }
     }
     
@@ -236,7 +260,7 @@ async function createNewThread_submit(){
         if(tgtElem_newInput.value==""){
             ngflg=1;strMsg+="概要を入力してください。\n";
         }else{
-                docdata1.overview = tgtElem_newInput.value.substring(0,BBS_Configs.comment_MaxDatasize);
+                docdata1.overview = tgtElem_newInput.value.substring(0,BBS_Configs.MaxDatasize_overview);
         }
     }
     // -----
@@ -253,7 +277,7 @@ async function createNewThread_submit(){
     // -----------------------------------------------------------------------------
     
     const loginUser = window.parent.fb_getLoginUser();
-    const strdbpath = "BulletinBoardList/"+pageconfig.bbsCode+"/threadList/"; 
+    const strdbpath = "BulletinBoardList/"+BBS_Configs.c_bbsCode+"/threadList/"; 
     //------
     
     let docdata={};
@@ -275,7 +299,8 @@ async function createNewThread_submit(){
     try {
         let tryProcess =window.parent.fb_addDataToFirestore(strdbpath , docdata);
         let try1 = await tryProcess;
-        if(try1!==null){ flgOk=1; }
+        if(try1!==null){ flgOk=try1; //refPath 
+        }
     } catch(e){
         let msg="データの新規登録に失敗しました。";
         window.parent.fb_myconsolelog("[Error] : "+msg );
@@ -292,6 +317,14 @@ async function createNewThread_submit(){
         //------- 成功 ------
         
         createNewThread_hide();
+        
+        let tid= flgOk.id;
+        if(tid){
+            moveFramePage('bbs_thread',`${tid}`);
+        }else{
+            setTimeout(  dispBBSList  , 300);
+        }
+        
     }
     
 }

@@ -15,9 +15,12 @@ import { query as rtdb_query, orderByChild as rtdb_orderByChild ,orderByKey as r
         ,equalTo as rtdb_equalTo,limitToLast as rtdb_limitToLast , startAt as rtdb_startAt,endAt as rtdb_endAt } from "firebase/database";
 
 import { getFirestore , collection as fsdb_collection, doc as fsdb_doc ,getDoc as fsdb_getDoc , onSnapshot as fsdb_onSnapshot
-        , query as fsdb_query, where as fsdb_where, getDocs as fsdb_getDocs , orderBy as fsdb_orderBy, limit as fsdb_limit } from "firebase/firestore";
-import { setDoc as fsdb_setDoc, addDoc as fsdb_addDoc, updateDoc as fsdb_updateDoc ,deleteDoc as fsdb_deleteDoc, serverTimestamp as fsdb_serverTimestamp , Timestamp as fsdb_Timestamp,runTransaction as fsdb_runTransaction  , startAfter as fsdb_startAfter} from "firebase/firestore";
+        , query as fsdb_query, where as fsdb_where, getDocs as fsdb_getDocs , orderBy as fsdb_orderBy, limit as fsdb_limit ,FieldPath as fsdb_FieldPath } from "firebase/firestore";
+import { setDoc as fsdb_setDoc, addDoc as fsdb_addDoc, updateDoc as fsdb_updateDoc ,deleteDoc as fsdb_deleteDoc, serverTimestamp as fsdb_serverTimestamp , Timestamp as fsdb_Timestamp,runTransaction as fsdb_runTransaction  } from "firebase/firestore";
 import { enableIndexedDbPersistence as fsdb_enableIndexedDbPersistence,getDocFromCache as fsdb_getDocFromCache } from "firebase/firestore";
+import { startAt as fsdb_startAt, startAfter as fsdb_startAfter, endBefore as fsdb_endBefore } from "firebase/firestore";
+import { getCountFromServer as fsdb_getCountFromServer } from "firebase/firestore";
+
 
 
 const firebaseConfig = {
@@ -53,5 +56,6 @@ export { updatePassword, updateProfile  ,sendEmailVerification   };
 export { rtdatabase ,rtdb_ref, rtdb_set,rtdb_get , rtdb_update ,rtdb_push ,rtdb_onValue ,rtdb_serverTimestamp,rtdb_onDisconnect};
 export { rtdb_query, rtdb_orderByChild ,rtdb_equalTo , rtdb_orderByKey,rtdb_limitToLast , rtdb_startAt,rtdb_endAt };
 export { firestoredatabase , fsdb_collection, fsdb_doc ,fsdb_getDoc , fsdb_onSnapshot , fsdb_query, fsdb_where, fsdb_getDocs,fsdb_orderBy, fsdb_limit};
-export { fsdb_setDoc, fsdb_addDoc, fsdb_updateDoc ,fsdb_deleteDoc ,fsdb_Timestamp,fsdb_startAfter ,fsdb_serverTimestamp,fsdb_runTransaction };
-export { fsdb_enableIndexedDbPersistence , fsdb_getDocFromCache };
+export { fsdb_setDoc, fsdb_addDoc, fsdb_updateDoc ,fsdb_deleteDoc ,fsdb_Timestamp ,fsdb_serverTimestamp,fsdb_runTransaction };
+export { fsdb_startAt,fsdb_startAfter, fsdb_endBefore };
+export { fsdb_enableIndexedDbPersistence , fsdb_getDocFromCache ,fsdb_getCountFromServer ,fsdb_FieldPath };

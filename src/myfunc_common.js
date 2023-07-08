@@ -9,6 +9,8 @@ function myconsolelog(msg0,mode=0){ // mode  -1:console.logのみ   1:アクセ�
     const ssnum=getMySessionNumber();
     if(ssnum) msg+= "("+ssnum+")";
     
+    msg += ( " <"+getFunctionCaller()+">" );
+    
     console.log(msg);
     
     let flg=false;
@@ -24,6 +26,18 @@ function myconsolelog(msg0,mode=0){ // mode  -1:console.logのみ   1:アクセ�
     if(flg){
         createAccessLogData( null , msg );
     }
+}
+function getFunctionCaller(tgtlvl=2){
+  let callerName = null;
+  try { throw new Error(); }
+  catch (e) { 
+    callerName = 'NONE';
+    let re = /(\w+)@|at (\w+) \(/g, st = e.stack, m;
+    while(m = re.exec(st)){
+      callerName = (m != null) ? m[tgtlvl] || m[tgtlvl+1] : 'NONE';
+    }
+  }
+  return callerName;
 }
 
 //*****************************
@@ -119,6 +133,20 @@ function escapeHtml(orgdata , reverseFlg=0) {
   return ans;
 }
 
+function encodeRFC5987ValueChars2(str) {
+    // Note that although RFC3986 reserves "!", RFC5987 does not,
+    // so we do not need to escape it
+  return encodeURIComponent(str).replace(/['()*]/g, function(c){
+      return "%" + c.charCodeAt(0).toString(16)
+      }).replace(/%(7C|60|5E)/g, function(str, hex){
+         return String.fromCharCode(parseInt(hex, 16))
+      });
+   // i.e., %27 %28 %29 %2a (Note that valid encoding of "*" is %2A
+   // which necessitates calling toUpperCase() to properly encode)
+    // The following are not required for percent-encoding per RFC5987,
+    // so we can allow for a little better readability over the wire: |`^
+    
+}
 
 
 /** 　myDateTimeFormat(orgvalue)　

@@ -185,7 +185,7 @@ function transferDBPath(fs_refPathAndKey){    // fs_refPathAndKey = [refColPath,
         indxdb_IndxKey1=null;
         indxdb_IndxKey2=null;
         if(dirAry.length<3){
-            indxdb_key = fs_key;
+            indxdb_key = fs_key;  
         }else{
             if(dirAry.length==3){
                 indxdb_key = fs_key;
@@ -199,20 +199,25 @@ function transferDBPath(fs_refPathAndKey){    // fs_refPathAndKey = [refColPath,
                    indxdb_key += "/"+dirAry[i]
                 }
                 if(fs_key) indxdb_key += "/"+fs_key;
-                if((fs_key=="")||(fs_key.length==20)){
-                    if(dirAry[4]== "contents"){
+                switch (dirAry[4]) {
+                  case "contents":
+                    if((fs_key=="")||(fs_key.length==20)){
                         indxdb_IndxKey1= "content_"+threadid; 
                         indxdb_IndxKey2="sort";
                     }
-                    if(dirAry[4]== "discussion"){
+                    break;
+                  case "discussion":
+                    if((fs_key=="")||(fs_key.length==20)){
                         indxdb_IndxKey1= "post_"+threadid; //postIndex
                         indxdb_IndxKey2="sort"; //postid
                     }
-                    if(dirAry[4]== "vote"){
+                    break;
+                  case "vote":  // fs_key はメールアドレス
                         indxdb_IndxKey1= "vote_"+threadid; //voteIndex
                         indxdb_IndxKey2="";
-                    }
+                    break;
                 }
+                
             }
         }
         break;
@@ -413,7 +418,7 @@ async function getTransactionOfIndexedDb(dbname,storeName,writableFlg=0){
 
 
 
-function getKeysFromIndexedDb(dbname,storeName,indexName, sortindex_start ,sortindex_end , direction0=false ,exceptkey=""){
+function getKeysFromIndexedDb(dbname,storeName,indexName, sortindex_start ,sortindex_end , direction0=false ,exceptkey=[]){
     return new Promise(async function(resolve, reject){
         
         myconsolelog(`[Info] required getKeys data from IndexedDB(${indexName}) : ${storeName} (${sortindex_start}-${sortindex_end}) in ${dbname}`);
@@ -459,7 +464,7 @@ function getKeysFromIndexedDb(dbname,storeName,indexName, sortindex_start ,sorti
                         resolve(ans);
                     } else {      // ( cursor.key  ,cursor.primaryKey) openCursorなら、cursor.value
                       
-                      if(indexName || cursor.key!=exceptkey ){
+                      if(indexName || !exceptkey.includes(cursor.key) ){
                           ans.push( [cursor.key , cursor.primaryKey] );
                       }
                       

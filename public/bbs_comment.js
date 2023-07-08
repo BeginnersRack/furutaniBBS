@@ -15,7 +15,10 @@ const HtmlElement_myDetailsDispAreaId  ="bbsComment_DispDetails";
 //---
 const indexedDbName = "furutaniBBS";
 
-const comment_MaxDatasize = 100;
+
+const BBS_Configs={};
+
+
 //---
 const pageconfig={};
    // pageconfig.bbsCode    :(URLパラメータより)BBSコード
@@ -33,6 +36,23 @@ async function func_iframeOnload(){ // iframeの親から、onloadイベント�
     pageconfig.threadCode = urlOptionsAry["t"];
     pageconfig.commentCode = urlOptionsAry["c"];
     
+    pageconfig.FilenameCode = pageconfig.bbsCode.toLowerCase();
+    const confAry = await import( './'+pageconfig.FilenameCode+'.js' );
+    if(confAry){
+        if(confAry.PM_BBSconfigs){
+            BBS_Configs.c_bbsCode = confAry.PM_BBSconfigs.c_bbsCode;
+            //--
+            BBS_Configs.MaxDatasize_comment = confAry.PM_BBSconfigs.MaxDatasize_comment;
+            if(!BBS_Configs.MaxDatasize_comment) BBS_Configs.MaxDatasize_comment = 1000;
+
+            BBS_Configs.recordHistorySize = confAry.PM_BBSconfigs.recordHistorySize;
+            if(!BBS_Configs.recordHistorySize) BBS_Configs.recordHistorySize = 0;
+            BBS_Configs.MaxDatasize_History = confAry.PM_BBSconfigs.MaxDatasize_History;
+            if(!BBS_Configs.MaxDatasize_History) BBS_Configs.MaxDatasize_History = 1000;
+        }
+    } 
+
+    
     let tgtElem;
     //----
     const mySystemIndicatorFunc = mySystemIndicatorFunc_create(); //閉包関数
@@ -43,6 +63,11 @@ async function func_iframeOnload(){ // iframeの親から、onloadイベント�
     const strdbpath = storeName+"/"+pageconfig.threadCode;
     pageconfig.threadDocInfo = await window.parent.getdataFromIndexedDb(indexedDbName ,storeName ,pageconfig.threadCode);
     pageconfig.threadConfig = await window.parent.getdataFromIndexedDb(indexedDbName ,strdbpath+"/contents","_system");
+    if(!pageconfig.threadConfig){
+        const sortMax = await window.parent.fb_getMaxOfSortIndex(strdbpath+"/contents"); // "_system"文書を作成
+        const dmy = await waitExistSingleDoc(strdbpath+"/contents","_system");
+        if(dmy) pageconfig.threadConfig = dmy;
+    }
     
     pageconfig.postData = await window.parent.fb_getDataFromFirestoreDb_singleDoc(strdbpath+"/discussion", pageconfig.commentCode ).catch(function(reject){
         console.log("[Error] getDataFromFirestoreDb_singleDoc : "+strdbpath + reject);
@@ -84,6 +109,24 @@ async function func_iframeOnload(){ // iframeの親から、onloadイベント�
     
     if(1==2){  mytest(); }
 };
+function waitExistSingleDoc(strdbpath,dockey){
+    return new Promise((resolve, reject) => {
+        async function mycheck(myresolve,cnt=0){
+            const tgtdoc = await window.parent.getdataFromIndexedDb(indexedDbName ,strdbpath,dockey);
+            if(tgtdoc){
+                myresolve(tgtdoc);
+            }else{
+                if(cnt>100){
+                    console.log("[Error] 文書が設定できませんでした : "+strdbpath +" / "+dockey);
+                }else{
+                    setTimeout( async function(){  mycheck(myresolve,cnt+1);
+                    },100);
+                }
+            }
+        }
+        mycheck(resolve);
+    });
+}
 function mySystemIndicatorFunc_create(key="",flg=false,msg=""){
     let timerIdAry={};
     let timerId = timerIdAry[key];
@@ -137,7 +180,7 @@ async function dispDetails(){
     if(tgtElem){
         let dispContents="";
         dispContents+="<table id='" +HtmlElement_myDetailsDispAreaId+ "' width=100%>";
-        if((pageconfig.threadConfig.post_titles)&&(pageconfig.threadConfig.post_titles.length>0)){
+        if((pageconfig.threadConfig)&&(pageconfig.threadConfig.post_titles)&&(pageconfig.threadConfig.post_titles.length>0)){
             let strtitle= pageconfig.postData.titlecategory;
             dispContents+="<tr> <th>件名："+ (strtitle?strtitle:"  ") +`　 ${pageconfig.postData.ownername} </th>  </tr>`;
         }
@@ -274,7 +317,11 @@ function updateComment_preExec(ev){
     if(tgtElem_newInput){
         strMsg = tgtElem_newInput.value;
     }
-    strMsg = strMsg.substring(0,comment_MaxDatasize);
+    if(strMsg.length>=BBS_Configs.MaxDatasize_comment){
+            ngflg=1;strMsg+="本文が長すぎます。\n";
+            return null;
+    }
+    strMsg = strMsg.substring(0,BBS_Configs.MaxDatasize_comment);
     if(strMsg.trim()==""){
         window.parent.fb_myconsolelog("[Info] 登録処理を中断：内容が入力されていません");
         alert("値を入力してください");
@@ -327,7 +374,13 @@ async function updateComment_exec(strTtl , strMsg){
     const dateDetailsOld= window.parent.myDateTimeFormat(pageconfig.postData.modified);
     const strtitle= pageconfig.postData.titlecategory;
     const strDetailsOldHd = "("+dateDetailsOld+") " + (strtitle?strtitle:"");
-    docdata.details_old = strDetailsOldHd + "<br />\n" + pageconfig.postData.details +"<br />\n" + pageconfig.postData.details_old;
+    if(BBS_Configs.recordHistorySize>=0){
+        let recordStr = strDetailsOldHd + "<br />\n";
+        if(BBS_Configs.recordHistorySize!=0){
+            recordStr +=  (pageconfig.postData.details).substring(0,BBS_Configs.recordHistorySize) +"<br />\n" 
+        }
+        docdata.details_old = (recordStr + pageconfig.postData.details_old).substring(0,BBS_Configs.MaxDatasize_History);
+    }
     
     // ----------
     if(!confirm( "OK?" +strTtl )){
@@ -355,9 +408,9 @@ async function updateComment_exec(strTtl , strMsg){
         //opt["b"]=pageconfig.bbsCode;
         //opt["t"]=pageconfig.threadCode;
         //window.parent.changeIframeTarget_main("bbs_thread",opt);
-        
         window.parent.changeIframeTarget_main("bbs_thread",{b:pageconfig.bbsCode,t:pageconfig.threadCode});
         
+        //createNewComment_hide();
         
     }
 }

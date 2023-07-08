@@ -62,7 +62,7 @@ service cloud.firestore {
     }
       // ----------- スレッド内容データのルール ------------------
     function isThreadContent(data) {
-        return data.keys().hasOnly(['created','modified_sys','modified','sort','chaptertitle','details','details_old','imagelink','imageheight'])
+        return data.keys().hasOnly(['created','modified_sys','modified','sort','chaptertitle','details','details_old','imagelink','imageheight','imagelinktype','imagelinktext'])
         && data.created is timestamp
         && data.modified_sys is timestamp
         && data.modified is timestamp
@@ -73,8 +73,12 @@ service cloud.firestore {
         && data.details is string
         && data.details.size() <= 1000
         && data.imagelink is string
-        && data.imagelink.size() <= 300
+        && data.imagelink.size() <= 500
         && data.imageheight is number
+        && data.imagelinktype is string
+        && data.imagelinktype.size() <= 10
+        && data.imagelinktext is string
+        && data.imagelinktext.size() <= 110
         // && ([0,1]).hasAll([data.type])
         ;
     }
