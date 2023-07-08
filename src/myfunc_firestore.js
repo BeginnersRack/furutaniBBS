@@ -207,7 +207,7 @@ async function getDataBlock( refPath ){
         if(listenerAry){if(listenerAry[refPath]){
             additionalFlg = (typeof (listenerAry[refPath].removefunc)!="function");
         }}
-        if(additionalFlg){ // additional(新ブロック)リスナの設定がまだされていない⇒初期化から実施する
+        if(additionalFlg){ // additional(新ブロック)リスナの設定がまだされていない⇒IndexedDBの初期設定から実施する
             let flg=await init_getDataFromFirestore(refPath); 
             if(!flg){ return null; }
             
@@ -574,7 +574,7 @@ function fsdb_processSnapshot(querySnapshot){ // Firestoreから取得されたD
             }
             
             //delete getDataBlock_wait[refPath+"_"+startPosition.toString()];
-            
+            delete getDataBlock_wait[refPath]; // 後続処理へのトリガ
         });
         
         resolve(existDocCnt);
@@ -660,7 +660,7 @@ async function setAdditionalListener(refPath){ //返値は、リスナー解除�
         
         checkListenerListener(refPath,querySnapshot);
         
-        delete getDataBlock_wait[refPath]; // 後続処理へのトリガ
+        //delete getDataBlock_wait[refPath]; // 後続処理へのトリガ
         
     });
     

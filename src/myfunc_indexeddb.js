@@ -89,28 +89,30 @@ function myopenIndexedDb(dbname){
                 let dbver=db.version;
                 //myconsolelog(`[Info] open indexedDB:${db.name}(version ${db.version})`);
                 db.onversionchange = (event) => {
-                  db.close();
-                  const mymsg="[Warning] 新しいバージョンのページが使用可能になりました。再読み込みしてください! "+(event.oldVersion ? event.oldVersion : "?")+"→"+(event.newVersion ? event.newVersion : "?");
-                  console.log(mymsg);
-                  let flg=1;
-                  if(mySuppressNewVersionErr){
-                      let chk = myTypeof(mySuppressNewVersionErr)
-                      if((chk=="[object Date]")||(chk=="[object Number]")){
-                          if( mySuppressNewVersionErr > (new Date()) ){
-                              flg=0;
+                   if( event.newVersion || (!mySuppressNewVersionErr) || ((new Date())>mySuppressNewVersionErr ) ){
+                      db.close();
+                   
+                      const mymsg="[Warning] 新しいバージョンのページが使用可能になりました。再読み込みしてください! "+(event.oldVersion ? event.oldVersion : "?")+"→"+(event.newVersion ? event.newVersion : "?");
+                      console.log(mymsg);
+                      let flg=1;
+                      if(mySuppressNewVersionErr){
+                          let chk = myTypeof(mySuppressNewVersionErr)
+                          if((chk=="[object Date]")||(chk=="[object Number]")){
+                              if( mySuppressNewVersionErr > (new Date()) ){
+                                  flg=0;
+                              }
                           }
                       }
-                  }
-                  if(flg){  
-                          if(confirm(mymsg)){
-                              mySuppressNewVersionErr= 0;
-                              location.reload();
-                          }else{
+                      if(flg){  
                               mySuppressNewVersionErr= new Date();
                               mySuppressNewVersionErr= mySuppressNewVersionErr.setMinutes(mySuppressNewVersionErr.getMinutes() + 1); //1分間 留保
-                          }
-                  }
-                  //reject();
+                              
+                              if(confirm(mymsg)){
+                                  location.reload();
+                              }
+                      }
+                      //reject();
+                   }
                 };
                 resolve(request);
                 
