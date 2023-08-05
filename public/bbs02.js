@@ -21,7 +21,7 @@ PM_BBSconfigs.recordHistorySize = 100;
 PM_BBSconfigs.MaxDatasize_History = 1000;
 
 // スレッドの種別選択肢
-PM_BBSconfigs.c_threadtypeAry = {proposal:"提案",question:"教えて",share:"共有",report:"報告"};
+PM_BBSconfigs.c_threadtypeAry = {proposal:"提案",question:"教えて",share:"共有",report:"報告",Recruitment:"募集"};
 
 
 

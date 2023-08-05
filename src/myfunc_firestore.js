@@ -660,7 +660,7 @@ async function setAdditionalListener(refPath){ //返値は、リスナー解除�
         
         checkListenerListener(refPath,querySnapshot);
         
-        //delete getDataBlock_wait[refPath]; // 後続処理へのトリガ
+        delete getDataBlock_wait[refPath]; // 後続処理へのトリガ  20230805
         
     });
     
@@ -850,7 +850,7 @@ function removedataFromIndexedDb_fs(iDbName,refColPath,refKey){
 }
 function getKeysFromIndexedDb_fs(iDbName,PandK,rangeStart,rangeEnd0,directionFlg , blockModeFlg=true ){
     let indxdb_IndxKey1 = PandK[2];
-    if(indxdb_IndxKey1==null) indxdb_IndxKey1="";
+    if(indxdb_IndxKey1==null) {indxdb_IndxKey1="";blockModeFlg=false;} //20230801
     const rangeEnd = (null==rangeEnd0)?(rangeStart+0.01):(rangeEnd0?rangeEnd0:0);
     if(rangeStart>=rangeEnd){
         myconsolelog(`[Warning] abandon to execute 'getKeysFromIndexedDb': The key is not valid. ${rangeStart}～${(rangeEnd?rangeEnd:"?")}`);

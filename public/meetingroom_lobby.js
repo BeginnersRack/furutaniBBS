@@ -206,7 +206,8 @@ function dispRoomsInfo(){
 async function createRoomDataAryListener(callbackFunc){
     let strdbpath = storeName+"/locale01/MeetingRoomList";
     window.parent.fb_setListenerListener(strdbpath,async function(Snapshot){
-        if(pageconfig.RoomList){
+        if(pageconfig){
+            if(!pageconfig.RoomList) pageconfig.RoomList={};
             let myPromises = [];
             Snapshot.docChanges().forEach((change) => { 
                 myPromises.push( new Promise((resolve, reject)=>{
@@ -243,11 +244,13 @@ async function createRoomDataAryListener(callbackFunc){
         return "NG";
     });
     let ans = {};
-    for(let i in ansdata){ let elm = ansdata[i];
-        const pkey = elm.primaryKey;
-        const akey = pkey.split("/");
-        const key = akey.length<1 ? pkey : akey[akey.length-1];
-        ans[key]=convert(elm);
+    if((typeof ansdata=="object")){
+        for(let i in ansdata){ let elm = ansdata[i];
+            const pkey = elm.primaryKey;
+            const akey = pkey.split("/");
+            const key = akey.length<1 ? pkey : akey[akey.length-1];
+            ans[key]=convert(elm);
+        }
     }
     pageconfig.RoomList = ans;
     return 0;
@@ -255,7 +258,8 @@ async function createRoomDataAryListener(callbackFunc){
 async function createRoomMemberAryListener(callbackFunc){
     let strdbpath = storeName+"/locale01/MeetingMembers";
     window.parent.fb_setListenerListener(strdbpath,async function(Snapshot){
-        if(pageconfig.participants){
+        if(pageconfig){
+            if(!pageconfig.participants) pageconfig.participants={};
             let myPromises = [];
             Snapshot.docChanges().forEach((change) => { 
                 myPromises.push( new Promise((resolve, reject)=>{
@@ -290,11 +294,13 @@ async function createRoomMemberAryListener(callbackFunc){
         return "NG";
     });
     let ans = {};
-    for(let i in ansdata){ let elm = ansdata[i];
-        const pkey = elm.primaryKey;
-        const akey = pkey.split("/");
-        const key = akey.length<1 ? pkey : akey[akey.length-1];
-        ans[key]=convert(elm);
+    if((typeof ansdata=="object")){
+        for(let i in ansdata){ let elm = ansdata[i];
+            const pkey = elm.primaryKey;
+            const akey = pkey.split("/");
+            const key = akey.length<1 ? pkey : akey[akey.length-1];
+            ans[key]=convert(elm);
+        }
     }
     pageconfig.participants = ans;
     return 0;

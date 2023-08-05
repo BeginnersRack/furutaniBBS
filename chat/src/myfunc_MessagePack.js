@@ -1,7 +1,10 @@
 import { encode, decode } from "@msgpack/msgpack";
 
-
 export { msgpack_encode , msgpack_decode };
+window.msgpack_encode=msgpack_encode;
+window.msgpack_decode=msgpack_decode;
+
+
 
 function msgpack_encode(object) {
     try {

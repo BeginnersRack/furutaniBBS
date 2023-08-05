@@ -688,15 +688,16 @@ async function dispVoteCtrl(){
     // ------
     let dispContents="";
     dispContents+="<table width=100%>";
-    dispContents+="<tr><th colspan='1'>投票</th>";
-    
-    strvl =`<input type="button" id="${HtmlElement_submitVoteBtn}" value="投票を登録" onclick="updateVoteSelect01(`+ myVoteIndx.toString() +`);" />`;
-    dispContents+="<td>"+strvl+"</td>";
-    
-    dispContents+="<td>"+strSl+"</td>";
-    
-    dispContents+="</tr>";
-    
+    if(strVoteOptions.length>0){
+        dispContents+="<tr><th colspan='1'>投票</th>";
+        
+        strvl =`<input type="button" id="${HtmlElement_submitVoteBtn}" value="投票を登録" onclick="updateVoteSelect01(`+ myVoteIndx.toString() +`);" />`;
+        dispContents+="<td>"+strvl+"</td>";
+        
+        dispContents+="<td>"+strSl+"</td>";
+        
+        dispContents+="</tr>";
+    }
     for (let key in voteRate){
         let cnt=voteRate[key];
         const cntstr = "*".repeat(cnt);
@@ -707,7 +708,6 @@ async function dispVoteCtrl(){
         }
         dispContents+=`<tr><td>${ttl}</td><td>${cnt}</td><td>${cntstr}</td></tr>`;
     }
-    
     dispContents+="</table>";
     //----
     tgtElem.innerHTML ="";

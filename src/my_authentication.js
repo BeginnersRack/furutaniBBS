@@ -208,7 +208,7 @@ function signIn(phase=0  ,  email0="",password0=""){
         password=password0;
     }else{
         let el_userid = document.getElementById("signin_email");
-        if(el_userid)   email = el_userid.value;
+        if(el_userid)   email = el_userid.value + "@furutani-sangyou.co.jp";
         let el_userpass = document.getElementById("signin_password");
         if(el_userpass) password=el_userpass.value;
     }
@@ -227,7 +227,7 @@ function signIn(phase=0  ,  email0="",password0=""){
                 <p>選択 <input type="radio" onchange="signIn_radio_func(1)" name="signin_q1" value="exist" checked> パスワード入力
                         <input type="radio" onchange="signIn_radio_func(0)" name="signin_q1" value="new"> 新規作成
                 </p>
-  <label style={{ display: "block" }}>email</label> <input id="signin_email" type="email" style="width: 300px;" ></input><br />
+  <label style={{ display: "block" }}>email</label> <input id="signin_email" type="email" style="width: 300px;" ></input>@furutani-sangyou.co.jp<br />
   <label style={{ display: "block" }}>    password </label>
     <input id="signin_password" type="password" style="width: 150px;"></input> (Password should be at least 6 characters)  <br />
   

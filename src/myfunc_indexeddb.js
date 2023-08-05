@@ -53,6 +53,7 @@ function myopenIndexedDb(dbname){
                      default:
                      case 0:
                         let storeMR = idb.createObjectStore("MeetingRooms",{keyPath:null ,autoIncrement:false});
+                        //storeMR.createIndex("sortIndex",['sortIndex','sort'],{unique:false,multiEntry:false});
                         
                         let store01 = idb.createObjectStore("BulletinBoardList/BBS01/threadList",{keyPath:null ,autoIncrement:false});
                         store01.createIndex("sortIndex",['sortIndex','sort'],{unique:false,multiEntry:false});
@@ -234,14 +235,14 @@ function transferDBPath(fs_refPathAndKey){    // fs_refPathAndKey = [refColPath,
             if(indxdb_key)indxdb_key+="/";
             indxdb_key += fs_refPathAndKey[1];
         }
-        indxdb_IndxKey1="";
+        indxdb_IndxKey1=null; //20230801
         indxdb_IndxKey2="";
         break;
         
       case "test":
         indxdb_refPath=fs_refPathAndKey[0];
         indxdb_key=fs_refPathAndKey[1];
-        indxdb_IndxKey1="";
+        indxdb_IndxKey1=null; //20230801
         indxdb_IndxKey2="";
         break;
         

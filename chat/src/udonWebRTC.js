@@ -23,9 +23,42 @@ export { changeParticipant }
 
 
 // ===================================================
-let connectedDatasModifyFlg=0;
+let connectedDatasModifyFlg=0; // Peer切断処理中に１になる。WindowClose処理等が参照する
+// ===================================================
 
+function webRTC_getAllConnections(){
+    let  ans={};
+    for (let key in G.connectedDatas) {
+       let conn = G.connectedDatas[key]; //連想配列
+       ans.key =conn;
+    }
+    return ans;
+}
+function webRTC_SendDataFromOutModule(strSendto,strDataType,senddata){
+    if(strSendto=="all"){
+        //全員に送信する
+        webRTC_SendData2All(strDataType,senddata);
+    }else{
+        if (strSendto in G.connectedDatas) {
+            let conn = G.connectedDatas[strSendto];
+            webRTC_SendData(conn,strDataType,senddata);
+        }else{
+            console.log(`[Warning] no connectionData "${strSendto}".`);
+        }
+    }
+}
+function webRTC_getMyPeerId(){
+    let ans;
+    if(G.SkyWayPeer){if(G.SkyWayPeer.id){
+        ans = (G.SkyWayPeer.id).toString()
+    }}
+    return ans;
+}
 
+window.webRTC_getMyPeerId=webRTC_getMyPeerId;
+window.webRTC_getAllConnections = webRTC_getAllConnections;
+window.webRTC_SendDataFromOutModule = webRTC_SendDataFromOutModule;
+// window.webRTC_recieveDataByOutModule(remoteId,strDataType,data)  :  返値＝0 で正常処理
 
 
 // ===================================================
@@ -66,7 +99,7 @@ function startMultiparty(swkey){
       // 自分のIDを表示する
       // - 自分のIDはpeerオブジェクトのidプロパティに存在する
       // - 相手はこのIDを指定することで、通話を開始することができる
-      const mypeerId = (G.SkyWayPeer.id).toString()
+      const mypeerId = (G.SkyWayPeer.id).toString();
       Ghtml.elemText_myPeerId.value = mypeerId;
       
       mypostWinMessage("push_peerid",mypeerId);
@@ -320,7 +353,16 @@ function checkRecievedDataStatus(remoteId,pkg0){
                       }
                       break;
                   default:
-                      console.log("Warning(debug):["+remoteId+"]より不正なデータ("+data.datatype+")を受信 : " + data);
+                      const outerfunc = window.webRTC_recieveDataByOutModule;
+                      let erflg=0;
+                      if(typeof outerfunc =="function"){
+                          erflg = outerfunc(remoteId ,dataInstance.datatype , data2 );
+                      }
+                      if(erflg==0){
+                          console.log("[Info] ["+remoteId+"]からの受信データ("+dataInstance.datatype+")を外部で処理");
+                      }else{
+                          console.log("Warning(debug):["+remoteId+"]より不正なデータ("+dataInstance.datatype+")を受信 : " + dataInstance.data);
+                      }
                       break;
                 }
                 collectFlg=1;

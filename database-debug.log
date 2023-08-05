@@ -3,7 +3,7 @@ WARNING: Illegal reflective access by io.netty.util.internal.ReflectionUtil (fil
 WARNING: Please consider reporting this to the maintainers of io.netty.util.internal.ReflectionUtil
 WARNING: Use --illegal-access=warn to enable warnings of further illegal reflective access operations
 WARNING: All illegal access operations will be denied in a future release
-11:31:28.267 [NamespaceSystem-akka.actor.default-dispatcher-4] INFO akka.event.slf4j.Slf4jLogger - Slf4jLogger started
-11:31:28.829 [main] INFO com.firebase.server.forge.App$ - Listening at localhost:9000
-11:32:01.917 [NamespaceSystem-akka.actor.default-dispatcher-5] INFO com.firebase.core.namespace.NamespaceActor - furutanidevelopperbbs-default-rtdb successfully activated FBKV (SurveyIdle(0)) wait: 414ms, init: 0ms
-11:32:02.216 [NamespaceSystem-blocking-namespace-operation-dispatcher-8:furutanidevelopperbbs-default-rtdb$-226671878:] INFO com.firebase.core.namespace.StateManager - Namespace furutanidevelopperbbs-default-rtdb status Active to Active
+10:11:34.722 [NamespaceSystem-akka.actor.default-dispatcher-4] INFO akka.event.slf4j.Slf4jLogger - Slf4jLogger started
+10:11:35.222 [main] INFO com.firebase.server.forge.App$ - Listening at localhost:9000
+10:11:57.065 [NamespaceSystem-akka.actor.default-dispatcher-5] INFO com.firebase.core.namespace.NamespaceActor - furutanidevelopperbbs-default-rtdb successfully activated FBKV (SurveyIdle(0)) wait: 421ms, init: 0ms
+10:11:57.331 [NamespaceSystem-blocking-namespace-operation-dispatcher-6:furutanidevelopperbbs-default-rtdb$667671002:] INFO com.firebase.core.namespace.StateManager - Namespace furutanidevelopperbbs-default-rtdb status Active to Active

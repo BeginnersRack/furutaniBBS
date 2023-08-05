@@ -16,11 +16,22 @@ function myonload(){
     timeoutID = setTimeout(myAutoplay,3000);
     console.log("set autoplay event.");
     
+    let tgt=document.getElementById("404movie");
+    if(tgt){
+        tgt.addEventListener('click', function(evt){
+            evt.stopPropagation();
+            if(videoMuted){
+                evt.preventDefault();
+                startplayByClick();
+            }
+        });
+    }
+    
     let pwin=window.parent;
     if(pwin){
-       let myfnc=pwin.fb_getDataFromFirestoreDb;
+       let myfnc=pwin.changeIframeTarget_main;
        if(typeof myfnc=="function"){
-          let btnelem=`<input type="button" id="button_home" value="Home" onclick="window.parent.fb_getDataFromFirestoreDb('home');" />`;
+          let btnelem=`<input type="button" id="button_home" value="Home" onclick="window.parent.changeIframeTarget_main('home');" />`;
           let tgtelem = document.getElementById("btn_home");
           if(tgtelem){
               tgtelem.insertAdjacentHTML('beforeend', btnelem);
@@ -48,15 +59,19 @@ function clearAutoplay(){
 function startplayByClick(){
     tgt=document.getElementById("404movie");
     if(tgt){
-        if(videoMuted){
             if(tgt.muted){
-                videoMuted=0;
                 if(tgt.volume==0){
                     tgt.volume=0.02;
                 }
                 tgt.muted=false;
+                videoMuted=0;
+            }else{
+                if(videoMuted){
+                    videoMuted=0;
+                }else{
+                    tgt.muted=true;
+                }
             }
-        }
     }
     startplay();
 }
